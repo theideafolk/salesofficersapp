@@ -32,12 +32,6 @@ const LoginPage: React.FC = () => {
       
       <LoginForm />
       
-      <div className="mt-4 text-center text-sm text-gray-600">
-        <button className="text-blue-600 hover:text-blue-800 font-medium">
-          English / हिंदी
-        </button>
-      </div>
-      
       {/* Modal for creating test sales officer */}
       <CreateSalesOfficerModal 
         isOpen={isModalOpen} 
