@@ -17,6 +17,7 @@ const HomePage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [username, setUsername] = useState('');
+  const [dayStarted, setDayStarted] = useState(false);
   const [dailyStats, setDailyStats] = useState({
     visitedShops: 0,
     totalShops: 25,
@@ -111,9 +112,13 @@ const HomePage: React.FC = () => {
   };
   
   const handleStartDay = () => {
-    // In a real app, this would initialize the tracking and possibly
-    // create a day entry in the database
     console.log('Starting day');
+    setDayStarted(true);
+  };
+
+  const handleEndDay = () => {
+    console.log('Ending day');
+    setDayStarted(false);
   };
   
   const handleVisitShop = () => {
@@ -171,14 +176,23 @@ const HomePage: React.FC = () => {
       <main className="flex-grow px-4 pb-20 pt-2">
         <h1 className="text-3xl font-bold text-center mb-6">Hi {username}</h1>
         
-        {/* Start Day Button */}
+        {/* Start/End Day Button */}
         <div className="flex justify-center mb-8">
-          <CircularButton onClick={handleStartDay} color="success">
-            <div className="text-center">
-              <div className="text-2xl font-bold">START</div>
-              <div className="text-2xl font-bold">DAY</div>
-            </div>
-          </CircularButton>
+          {dayStarted ? (
+            <CircularButton onClick={handleEndDay} color="danger">
+              <div className="text-center">
+                <div className="text-2xl font-bold">END</div>
+                <div className="text-2xl font-bold">DAY</div>
+              </div>
+            </CircularButton>
+          ) : (
+            <CircularButton onClick={handleStartDay} color="success">
+              <div className="text-center">
+                <div className="text-2xl font-bold">START</div>
+                <div className="text-2xl font-bold">DAY</div>
+              </div>
+            </CircularButton>
+          )}
         </div>
         
         {/* Target Progress */}
@@ -213,7 +227,7 @@ const HomePage: React.FC = () => {
         
         {/* Action Buttons */}
         <div className="flex gap-4 mb-6">
-          <MainButton onClick={handleVisitShop} variant="outline" fullWidth>
+          <MainButton onClick={handleVisitShop} variant="outline" fullWidth disabled={!dayStarted}>
             Visit Shop
           </MainButton>
           
@@ -222,18 +236,23 @@ const HomePage: React.FC = () => {
           </MainButton>
         </div>
         
-        {/* Location Button */}
-        <MainButton 
-          onClick={handleToggleLocation} 
-          variant="warning" 
-          fullWidth
-          disabled={locationEnabled}
-        >
-          <div className="flex items-center justify-center">
-            <MapPin className="mr-2" size={18} />
-            {locationEnabled ? 'Location enabled' : 'Turn on location'}
+        {/* Location and Sync Status */}
+        {locationEnabled ? (
+          <div className="bg-green-500 text-white text-center py-4 rounded mb-4">
+            All data synced and location active
           </div>
-        </MainButton>
+        ) : (
+          <MainButton 
+            onClick={handleToggleLocation} 
+            variant="warning" 
+            fullWidth
+          >
+            <div className="flex items-center justify-center">
+              <MapPin className="mr-2" size={18} />
+              Turn on location
+            </div>
+          </MainButton>
+        )}
       </main>
       
       {/* Bottom Navigation */}
