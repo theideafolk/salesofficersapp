@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
-import { Search, Plus, MapPin, User, CheckCircle, AlertCircle, Menu, LogOut, Phone } from 'lucide-react';
+import { Search, Plus, MapPin, User, CheckCircle, AlertCircle, Menu, LogOut, Phone, X } from 'lucide-react';
 
 // Cache keys
 const SHOPS_CACHE_KEY = 'cached_nearby_shops';
@@ -19,6 +19,7 @@ interface Shop {
   territory: string;
   city: string;
   state: string;
+  country: string;
   owner_name?: string;
   phone_number?: string;
   contact_person?: string;
@@ -52,6 +53,7 @@ const ShopsPage: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   
   // Check for success message in navigation state
   useEffect(() => {
@@ -514,6 +516,16 @@ const ShopsPage: React.FC = () => {
     navigate('/shops/new');
   }, [navigate]);
   
+  // Toggle menu function - add opening and closing functionality
+  const handleToggleMenu = useCallback(() => {
+    setMenuOpen(prevState => !prevState);
+  }, []);
+  
+  // Close menu when clicking outside
+  const handleOutsideClick = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
+  
   // Handle logout
   const handleLogout = useCallback(async () => {
     await signOut();
@@ -532,9 +544,10 @@ const ShopsPage: React.FC = () => {
       <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm">
         <button 
           className="text-gray-800 focus:outline-none"
-          aria-label="Menu"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          onClick={handleToggleMenu}
         >
-          <Menu size={24} />
+          {menuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         
         <h1 className="text-xl font-bold">Visit Shop</h1>
@@ -547,6 +560,45 @@ const ShopsPage: React.FC = () => {
           <LogOut size={24} />
         </button>
       </header>
+      
+      {/* Side Menu */}
+      {menuOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-20" onClick={handleOutsideClick}>
+          <div 
+            className="bg-white h-full w-3/4 max-w-xs p-5 flex flex-col"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on menu content
+          >
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold">Menu</h2>
+              <button 
+                onClick={handleToggleMenu} 
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close menu"
+              >
+                <Menu size={24} />
+              </button>
+            </div>
+            
+            <div className="flex-grow">
+              <button 
+                onClick={handleAddNewShop}
+                className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left flex items-center"
+              >
+                <Plus size={20} className="mr-2" />
+                Add New Shop
+              </button>
+              
+              <button 
+                onClick={handleLogout}
+                className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left flex items-center"
+              >
+                <LogOut size={20} className="mr-2" />
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Main Content */}
       <main className="flex-grow px-4 pb-20 pt-4">

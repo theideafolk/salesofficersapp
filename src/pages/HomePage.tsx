@@ -1,5 +1,5 @@
 // Home page component with mobile-friendly design
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import BottomNavigation from '../components/BottomNavigation';
@@ -10,7 +10,7 @@ import AppHeader from '../components/AppHeader';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import ConfirmEndDayModal from '../components/ConfirmEndDayModal';
 import { supabase } from '../lib/supabase';
-import { MapPin, Check, TimerOff, AlertTriangle, PlayCircle, PauseCircle } from 'lucide-react';
+import { MapPin, Check, TimerOff, AlertTriangle, PlayCircle, PauseCircle, Menu } from 'lucide-react';
 
 interface WorkHours {
   work_id: string;
@@ -86,12 +86,12 @@ const HomePage: React.FC = () => {
     };
   }, [dayStarted, isOnBreak, dayEnded]);
   
-  // Format elapsed time as HH:MM hrs
+  // Format elapsed time as XX hrs YY mins
   const formatElapsedTime = (milliseconds: number) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} hrs`;
+    return `${hours.toString().padStart(2, '0')} hrs ${minutes.toString().padStart(2, '0')} mins`;
   };
 
   // Start the timer
@@ -524,38 +524,66 @@ const HomePage: React.FC = () => {
     return `₹${amount.toLocaleString('en-IN')}`;
   };
 
+  // Toggle menu function - add closing functionality
+  const handleToggleMenu = useCallback(() => {
+    setMenuOpen(prevState => !prevState);
+  }, []);
+
+  // Close menu when clicking outside of it
+  const handleOutsideClick = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* App Header */}
       <AppHeader 
-        onToggleMenu={() => setMenuOpen(!menuOpen)} 
+        onToggleMenu={handleToggleMenu} 
         menuOpen={menuOpen} 
         onLogout={handleSignOut}
       />
       
       {/* Side Menu */}
       {menuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-20">
-          <div className="bg-white h-full w-3/4 max-w-xs p-5 flex flex-col">
-            <h2 className="text-xl font-bold mb-5">Menu</h2>
-            
-            <div className="flex-grow">
-              <button 
-                onClick={handleSignOut}
-                className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left"
-              >
-                Logout
-              </button>
+        <>
+          {/* Backdrop for clicking outside the menu */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-20"
+            onClick={handleOutsideClick}
+          >
+            <div 
+              className="bg-white h-full w-3/4 max-w-xs p-5 flex flex-col"
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on menu content
+            >
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-xl font-bold">Menu</h2>
+                <button 
+                  onClick={handleOutsideClick} 
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close menu"
+                >
+                  <Menu size={24} />
+                </button>
+              </div>
               
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="bg-white hover:bg-gray-100 text-red-600 w-full py-3 px-4 rounded-lg font-medium text-left"
-              >
-                Delete Account
-              </button>
+              <div className="flex-grow">
+                <button 
+                  onClick={handleSignOut}
+                  className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left"
+                >
+                  Logout
+                </button>
+                
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="bg-white hover:bg-gray-100 text-red-600 w-full py-3 px-4 rounded-lg font-medium text-left"
+                >
+                  Delete Account
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
       
       {/* Main Content */}
