@@ -1,9 +1,10 @@
 // Shop visit page component for recording shop visits
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Camera, MapPin, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, MapPin, CheckCircle, Loader2, X, AlertCircle, RefreshCw, Clock } from 'lucide-react';
+import { uploadVisitProofImage } from '../utils/storage';
 
 interface Shop {
   shop_id: string;
@@ -12,6 +13,13 @@ interface Shop {
   gps_location: string;
   geom_location?: string;
 }
+
+// Location acquisition strategies with increasing timeouts
+const locationStrategies = [
+  { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }, // Quick, less accurate
+  { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }, // More accurate, longer timeout
+  { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 } // Highest accuracy, longest timeout
+];
 
 const ShopVisitPage: React.FC = () => {
   const { shopId } = useParams<{ shopId: string }>();
@@ -26,7 +34,16 @@ const ShopVisitPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [enlargedImage, setEnlargedImage] = useState(false);
+  const [photoRequired, setPhotoRequired] = useState(true);
+  const [isGettingLocation, setIsGettingLocation] = useState(true);
+  const [currentStrategyIndex, setCurrentStrategyIndex] = useState(0);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [visitTime, setVisitTime] = useState<string>('');
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [visitId, setVisitId] = useState<string | null>(null);
   
   // Get shop details
   useEffect(() => {
@@ -58,35 +75,146 @@ const ShopVisitPage: React.FC = () => {
     fetchShopDetails();
   }, [shopId]);
   
-  // Get user's current location
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          setError('Unable to get your location. Please ensure location services are enabled.');
-        }
-      );
-    } else {
-      setError('Geolocation is not supported by this browser');
+  // Try to get location using current strategy
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser');
+      setIsGettingLocation(false);
+      return;
     }
-  }, []);
+
+    // Clear any previous location errors
+    setLocationError(null);
+    setIsGettingLocation(true);
+    
+    // Get the current strategy
+    const strategy = locationStrategies[currentStrategyIndex];
+    
+    // Try to get current position
+    const locationId = navigator.geolocation.getCurrentPosition(
+      // Success callback
+      (position) => {
+        const newLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        
+        // Update the user location
+        setUserLocation(newLocation);
+        setLocationError(null);
+        setIsGettingLocation(false);
+        
+        // Cache the location in session storage as fallback
+        try {
+          sessionStorage.setItem('lastKnownLocation', JSON.stringify({
+            lat: newLocation.lat,
+            lng: newLocation.lng,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          // Ignore storage errors
+        }
+      },
+      // Error callback
+      (error) => {
+        console.error('Error getting location:', error);
+        
+        // Check if we can try next strategy
+        if (currentStrategyIndex < locationStrategies.length - 1) {
+          // Try next strategy
+          setCurrentStrategyIndex(currentStrategyIndex + 1);
+        } else {
+          // We've tried all strategies, check if we have a cached location
+          try {
+            const cachedLocationStr = sessionStorage.getItem('lastKnownLocation');
+            if (cachedLocationStr) {
+              const cachedLocation = JSON.parse(cachedLocationStr);
+              const locationAge = Date.now() - cachedLocation.timestamp;
+              
+              // Use cached location if it's less than 10 minutes old
+              if (locationAge < 10 * 60 * 1000) {
+                setUserLocation({
+                  lat: cachedLocation.lat,
+                  lng: cachedLocation.lng
+                });
+                setLocationError('Using your last known location. For better accuracy, please check your location settings.');
+                setIsGettingLocation(false);
+                return;
+              }
+            }
+          } catch (e) {
+            // Ignore storage errors
+          }
+          
+          // Show appropriate error message based on error code
+          let errorMsg = 'Unable to get your location. ';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg += 'Please allow location access in your browser settings.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg += 'Location information is unavailable. Please try again in an open area.';
+              break;
+            case error.TIMEOUT:
+              errorMsg += 'The request to get your location timed out. Please check your GPS and network connection.';
+              break;
+            default:
+              errorMsg += 'An unknown error occurred.';
+          }
+          setLocationError(errorMsg);
+          setIsGettingLocation(false);
+        }
+      },
+      // Options
+      strategy
+    );
+    
+    return locationId;
+  }, [currentStrategyIndex]);
   
-  // Handle image capture
+  // Initial location acquisition
+  useEffect(() => {
+    const locationId = getCurrentLocation();
+    
+    // Clean up
+    return () => {
+      if (locationId && navigator.geolocation) {
+        // This is a no-op for getCurrentPosition, but good practice
+      }
+    };
+  }, [getCurrentLocation]);
+  
+  // When strategy changes, try again with new strategy
+  useEffect(() => {
+    if (currentStrategyIndex > 0) {
+      getCurrentLocation();
+    }
+  }, [currentStrategyIndex, getCurrentLocation]);
+  
+  // Manually retry getting location
+  const handleRetryLocation = () => {
+    // Reset to first strategy and try again
+    setCurrentStrategyIndex(0);
+    getCurrentLocation();
+  };
+  
+  // Handle image capture from camera
   const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image is too large. Maximum size is 5MB.');
+        return;
+      }
       
       // Create a preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
+        // Clear any previous errors when a new image is selected
+        setError('');
       };
       reader.readAsDataURL(file);
       
@@ -94,15 +222,70 @@ const ShopVisitPage: React.FC = () => {
     }
   };
   
+  // Handle image click to enlarge
+  const handleImageClick = () => {
+    if (imagePreview) {
+      setEnlargedImage(true);
+    }
+  };
+  
+  // Close enlarged image view
+  const closeEnlargedImage = () => {
+    setEnlargedImage(false);
+  };
+  
+  // Remove the captured image
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+  
   // Handle notes change
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNotes(e.target.value);
   };
   
+  // Toggle photo requirement
+  const togglePhotoRequired = () => {
+    setPhotoRequired(!photoRequired);
+  };
+  
+  // Format current time for display
+  const formatTime = () => {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    
+    // Convert to 12-hour format
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    
+    // Format as HH:MM AM/PM
+    return `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+  };
+  
+  // Create a point string for PostgreSQL
+  const createPointString = (lng: number, lat: number): string => {
+    // Simple point format (x,y) for PostgreSQL
+    return `(${lng},${lat})`;
+  };
+  
   // Handle form submission to record the visit
   const handleSubmit = async () => {
-    if (!user || !shopId || !userLocation) {
-      setError('Missing required information');
+    if (!user || !shopId) {
+      setError('Missing required information.');
+      return;
+    }
+    
+    if (!userLocation) {
+      setError('Location is required. Please ensure location services are enabled and try again.');
+      return;
+    }
+    
+    // Validate photo requirement
+    if (photoRequired && !imageFile) {
+      setError('Please capture a photo of the shop before confirming visit.');
       return;
     }
     
@@ -111,29 +294,27 @@ const ShopVisitPage: React.FC = () => {
       setError('');
       setUploadProgress(0);
       
-      // Create a proper PostGIS point using ST_MakePoint and ST_SetSRID
-      // This is done through a raw SQL query since we need to use PostGIS functions
-      const { data: pointData, error: pointError } = await supabase.rpc('create_postgis_point', {
-        longitude: userLocation.lng,
-        latitude: userLocation.lat
-      });
+      // Set the current time for display in the confirmation
+      const currentTime = formatTime();
+      setVisitTime(currentTime);
       
-      // If creating the point through RPC fails, fall back to the standard point syntax
-      const pointString = pointError 
-        ? `(${userLocation.lng},${userLocation.lat})` 
-        : pointData;
+      // Create a standard PostgreSQL point string
+      const pointString = createPointString(userLocation.lng, userLocation.lat);
+      console.log('Using point string:', pointString);
+      
+      // Create initial visit record
+      const visitRecord = {
+        sales_officer_id: user.id,
+        shop_id: shopId,
+        gps_location: pointString,
+        notes: notes || null,
+        proof_status_confirmed: false
+      };
       
       // Create the visit record
       const { data: visitData, error: visitError } = await supabase
         .from('visits')
-        .insert([
-          {
-            sales_officer_id: user.id,
-            shop_id: shopId,
-            gps_location: pointString,
-            notes: notes || null,
-          }
-        ])
+        .insert([visitRecord])
         .select('visit_id')
         .single();
         
@@ -141,59 +322,77 @@ const ShopVisitPage: React.FC = () => {
         throw new Error(`Failed to create visit: ${visitError.message}`);
       }
       
-      // If we have an image, upload it and update the visit
-      if (imageFile && visitData?.visit_id) {
-        // Upload the image to storage
-        const fileName = `visit-proofs/${visitData.visit_id}-${Date.now()}.jpg`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('visit-proofs')
-          .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false,
-            onUploadProgress: (progress) => {
-              const percent = Math.round((progress.loaded / progress.total) * 100);
-              setUploadProgress(percent);
-            }
-          });
+      if (!visitData || !visitData.visit_id) {
+        throw new Error('Failed to create visit: No visit ID returned');
+      }
+      
+      // Store the visit ID for later use
+      setVisitId(visitData.visit_id);
+      
+      // If we have an image, upload it
+      if (imageFile && visitData.visit_id) {
+        try {
+          // Upload the image using our utility function
+          const imageUrl = await uploadVisitProofImage(
+            imageFile,
+            visitData.visit_id,
+            (progress) => setUploadProgress(progress)
+          );
           
-        if (uploadError) {
-          throw new Error(`Failed to upload image: ${uploadError.message}`);
-        }
-        
-        // Get the public URL for the uploaded image
-        const { data: publicURLData } = await supabase.storage
-          .from('visit-proofs')
-          .getPublicUrl(fileName);
-          
-        const imageUrl = publicURLData?.publicUrl;
-        
-        // Update the visit record with the image URL
-        if (imageUrl) {
-          const { error: updateError } = await supabase
-            .from('visits')
-            .update({ proof_image: imageUrl })
-            .eq('visit_id', visitData.visit_id);
+          if (imageUrl) {
+            console.log('Image uploaded successfully:', imageUrl);
+            setUploadedImageUrl(imageUrl);
             
-          if (updateError) {
-            console.error('Error updating visit with image:', updateError);
+            // Update the visit record with the image URL
+            const { error: updateError } = await supabase
+              .from('visits')
+              .update({ 
+                proof_image: imageUrl,
+                proof_status_confirmed: true 
+              })
+              .eq('visit_id', visitData.visit_id);
+              
+            if (updateError) {
+              console.error('Error updating visit with image:', updateError);
+              // Continue anyway - at least the visit is recorded
+            }
+          } else {
+            console.error('Failed to upload image');
+            setError('Failed to upload image, but visit was recorded.');
+            // Continue anyway - at least the visit is recorded
           }
+        } catch (uploadErr) {
+          console.error('Error uploading image:', uploadErr);
+          setError('Failed to upload image, but visit was recorded.');
+          // Continue anyway - at least the visit is recorded
         }
       }
       
-      // Navigate back to shop list with success message
-      navigate('/shops', { state: { success: true, message: 'Visit recorded successfully' } });
+      // Show confirmation popup instead of navigating away immediately
+      setShowConfirmation(true);
+      setSaving(false);
       
     } catch (err) {
       console.error('Error recording visit:', err);
       setError(err instanceof Error ? err.message : 'Failed to record visit');
-    } finally {
       setSaving(false);
     }
   };
   
-  // Handle cancel button
-  const handleCancel = () => {
+  // Handle return to shops list after confirmation
+  const handleReturnToShops = () => {
+    navigate('/shops', { state: { success: true, message: 'Visit recorded successfully' } });
+  };
+  
+  // Handle "Place Order" button click in confirmation
+  const handlePlaceOrder = () => {
+    // Navigate to orders page or specific order placement page
+    // For now, just return to shops with success message
+    navigate('/orders', { state: { fromVisit: true, shopId: shopId } });
+  };
+  
+  // Handle back button
+  const handleBack = () => {
     navigate('/shops');
   };
   
@@ -202,7 +401,7 @@ const ShopVisitPage: React.FC = () => {
       {/* Header */}
       <header className="flex items-center py-4 px-4 bg-white shadow-sm">
         <button 
-          onClick={handleCancel}
+          onClick={handleBack}
           className="text-gray-800 focus:outline-none mr-3"
           aria-label="Back"
         >
@@ -218,8 +417,9 @@ const ShopVisitPage: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 flex items-start">
+            <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+            <span>{error}</span>
           </div>
         ) : shop ? (
           <>
@@ -234,19 +434,41 @@ const ShopVisitPage: React.FC = () => {
             
             {/* Visit Form */}
             <div className="space-y-6">
-              {/* Photo Proof */}
+              {/* Photo Proof Section */}
               <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Take a Photo as Proof
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-gray-700 font-medium">
+                    Take a Photo as Proof
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="photoRequired"
+                      checked={photoRequired}
+                      onChange={togglePhotoRequired}
+                      className="mr-2 h-4 w-4 text-blue-600"
+                    />
+                    <label htmlFor="photoRequired" className="text-sm text-gray-600">
+                      Required
+                    </label>
+                  </div>
+                </div>
                 
                 {imagePreview ? (
-                  <div className="mb-3">
+                  <div className="mb-3 relative">
                     <img 
                       src={imagePreview} 
                       alt="Visit proof" 
-                      className="w-full h-48 object-cover rounded-lg"
+                      className="w-full h-48 object-contain rounded-lg border border-gray-300 cursor-pointer"
+                      onClick={handleImageClick}
                     />
+                    <button
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
+                      aria-label="Remove image"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 ) : (
                   <div 
@@ -257,21 +479,19 @@ const ShopVisitPage: React.FC = () => {
                   </div>
                 )}
                 
-                <label className="block">
-                  <span className="sr-only">Choose photo</span>
-                  <input 
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleImageCapture}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-medium
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100"
-                  />
-                </label>
+                <div className="flex justify-center">
+                  <label className="flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-md cursor-pointer transition-colors">
+                    <Camera className="h-5 w-5 mr-2" />
+                    <span>Capture Photo</span>
+                    <input 
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleImageCapture}
+                      className="sr-only" // Hide the actual input element
+                    />
+                  </label>
+                </div>
               </div>
               
               {/* Notes */}
@@ -290,23 +510,57 @@ const ShopVisitPage: React.FC = () => {
               
               {/* Location Status */}
               {userLocation ? (
-                <div className="flex items-center text-green-600 font-medium">
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  <span>Your location has been captured</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-green-600 font-medium">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    <span>Location captured</span>
+                  </div>
+                  <button 
+                    onClick={handleRetryLocation}
+                    className="text-blue-600 flex items-center text-sm"
+                  >
+                    <RefreshCw size={14} className="mr-1" />
+                    Refresh
+                  </button>
                 </div>
               ) : (
-                <div className="flex items-center text-yellow-600 font-medium">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-yellow-600 mr-2"></div>
-                  <span>Getting your location...</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center text-yellow-600 font-medium mb-1">
+                    {isGettingLocation ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-yellow-600 mr-2"></div>
+                    ) : (
+                      <AlertCircle className="h-5 w-5 mr-2" />
+                    )}
+                    <span>
+                      {isGettingLocation ? 
+                        `Getting your location (Strategy ${currentStrategyIndex + 1}/${locationStrategies.length})...` : 
+                        'Location not available'
+                      }
+                    </span>
+                  </div>
+                  
+                  {locationError && !isGettingLocation && (
+                    <div className="text-sm text-red-600 ml-7 mb-2">{locationError}</div>
+                  )}
+                  
+                  {!isGettingLocation && (
+                    <button 
+                      onClick={handleRetryLocation}
+                      className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded text-sm flex items-center justify-center w-full"
+                    >
+                      <RefreshCw size={14} className="mr-1" />
+                      Retry Getting Location
+                    </button>
+                  )}
                 </div>
               )}
               
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                disabled={!userLocation || saving}
+                disabled={!userLocation || saving || (photoRequired && !imageFile)}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
-                  !userLocation || saving ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+                  !userLocation || saving || (photoRequired && !imageFile) ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
                 {saving ? (
@@ -318,15 +572,6 @@ const ShopVisitPage: React.FC = () => {
                   'Confirm Visit'
                 )}
               </button>
-              
-              {/* Cancel Button */}
-              <button
-                onClick={handleCancel}
-                disabled={saving}
-                className="w-full py-3 px-4 rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-800"
-              >
-                Cancel
-              </button>
             </div>
           </>
         ) : (
@@ -335,6 +580,98 @@ const ShopVisitPage: React.FC = () => {
           </div>
         )}
       </main>
+      
+      {/* Enlarged Image Modal */}
+      {enlargedImage && imagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-2xl">
+            <button 
+              onClick={closeEnlargedImage}
+              className="absolute top-2 right-2 text-white hover:text-gray-300 bg-gray-800 bg-opacity-50 rounded-full p-1"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={imagePreview} 
+              alt="Enlarged proof" 
+              className="max-h-[80vh] max-w-full mx-auto object-contain"
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Visit Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md relative shadow-xl border border-green-200">
+            {/* Close button */}
+            <button 
+              onClick={handleReturnToShops}
+              className="absolute top-4 right-4 text-gray-800"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="p-6">
+              {/* Success Icon */}
+              <div className="flex justify-center mb-4">
+                <div className="bg-green-500 rounded-full p-4">
+                  <CheckCircle className="h-8 w-8 text-white" />
+                </div>
+              </div>
+              
+              {/* Title */}
+              <h2 className="text-4xl font-bold text-center mb-2">Visit Confirmed</h2>
+              
+              {/* Shop Name */}
+              <h3 className="text-2xl font-medium text-center mb-6">{shop?.name}</h3>
+              
+              {/* Location and Time */}
+              <div className="mb-4">
+                <div className="flex items-center mb-2">
+                  <MapPin className="h-6 w-6 mr-2 text-gray-800" />
+                  <span className="text-lg text-gray-800">GPS location captured</span>
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-6 w-6 mr-2 text-gray-800" />
+                  <span className="text-lg text-gray-800">{visitTime}</span>
+                </div>
+              </div>
+              
+              {/* Image - Updated to better fit the preview box */}
+              {imagePreview && (
+                <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 flex justify-center items-center bg-gray-50">
+                  <div className="w-full h-40 relative">
+                    <img 
+                      src={uploadedImageUrl || imagePreview} 
+                      alt="Visit proof" 
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Proof Status */}
+              <div className="flex items-center mb-6">
+                <div className="bg-green-500 rounded-full p-1 mr-2">
+                  <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-lg">Proof of visit logged</span>
+              </div>
+              
+              {/* Action Button */}
+              <button
+                onClick={handlePlaceOrder}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-lg text-xl"
+              >
+                Place Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

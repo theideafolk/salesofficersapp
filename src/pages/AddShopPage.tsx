@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
-import { ArrowLeft, Camera, Loader2, AlertCircle, Check } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, AlertCircle, Check, X } from 'lucide-react';
+import { uploadShopImage } from '../utils/storage';
 
 interface ShopFormData {
   name: string;
@@ -36,10 +37,11 @@ const AddShopPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [enlargedImage, setEnlargedImage] = useState(false);
   
   // Available options for dropdowns
-  const cities = ['Mumbai', 'Pune'];
-  const states = ['Maharashtra'];
+  const cities = ['Mumbai', 'Pune', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata'];
+  const states = ['Maharashtra', 'Delhi', 'Karnataka', 'Telangana', 'Tamil Nadu', 'West Bengal'];
   const countries = ['India'];
   
   // Get user's location automatically when component mounts
@@ -70,15 +72,40 @@ const AddShopPage: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image is too large. Maximum size is 5MB.');
+        return;
+      }
+      
       // Create a preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
+        setError(null); // Clear any previous errors
       };
       reader.readAsDataURL(file);
       
       setImageFile(file);
     }
+  };
+  
+  // Handle image click to enlarge
+  const handleImageClick = () => {
+    if (imagePreview) {
+      setEnlargedImage(true);
+    }
+  };
+  
+  // Close enlarged image view
+  const closeEnlargedImage = () => {
+    setEnlargedImage(false);
+  };
+  
+  // Remove the captured image
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
   };
   
   // Handle form submission
@@ -137,37 +164,24 @@ const AddShopPage: React.FC = () => {
       
       // If we have an image file, upload it
       if (imageFile && shopResult?.shop_id) {
-        const fileName = `shop-photos/${shopResult.shop_id}-${Date.now()}.jpg`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('shop-photos')
-          .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false,
-            onUploadProgress: (progress) => {
-              const percent = Math.round((progress.loaded / progress.total) * 100);
-              setUploadProgress(percent);
-            }
-          });
+        try {
+          // Upload the image using our utility function
+          const imageUrl = await uploadShopImage(
+            imageFile, 
+            shopResult.shop_id,
+            (progress) => setUploadProgress(progress)
+          );
           
-        if (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          // Continue without the image
-        } else {
-          // Get the public URL
-          const { data: publicURLData } = await supabase.storage
-            .from('shop-photos')
-            .getPublicUrl(fileName);
-            
-          const imageUrl = publicURLData?.publicUrl;
-          
-          // Update the shop with the image URL
           if (imageUrl) {
+            // Update the shop with the image URL
             await supabase
               .from('shops')
               .update({ photo: imageUrl })
               .eq('shop_id', shopResult.shop_id);
           }
+        } catch (uploadErr) {
+          console.error('Error uploading image:', uploadErr);
+          // Continue anyway - at least the shop is created
         }
       }
       
@@ -360,12 +374,21 @@ const AddShopPage: React.FC = () => {
             </p>
             
             {imagePreview ? (
-              <div className="mb-3">
+              <div className="mb-3 relative">
                 <img 
                   src={imagePreview} 
-                  alt="Shop preview" 
-                  className="w-full h-48 object-cover rounded-lg"
+                  alt="Shop preview"
+                  onClick={handleImageClick}
+                  className="w-full h-48 object-cover rounded-lg cursor-pointer"
                 />
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
+                  aria-label="Remove image"
+                  type="button"
+                >
+                  <X size={16} />
+                </button>
               </div>
             ) : (
               <div 
@@ -376,21 +399,19 @@ const AddShopPage: React.FC = () => {
               </div>
             )}
             
-            <label className="block">
-              <span className="sr-only">Choose photo</span>
-              <input 
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageCapture}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-medium
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100"
-              />
-            </label>
+            <div className="flex justify-center">
+              <label className="flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-md cursor-pointer transition-colors">
+                <Camera className="h-5 w-5 mr-2" />
+                <span>Capture Photo</span>
+                <input 
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageCapture}
+                  className="sr-only"
+                />
+              </label>
+            </div>
           </div>
           
           {/* Save Button */}
@@ -410,6 +431,27 @@ const AddShopPage: React.FC = () => {
           </button>
         </form>
       </main>
+      
+      {/* Enlarged Image Modal */}
+      {enlargedImage && imagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-2xl">
+            <button 
+              onClick={closeEnlargedImage}
+              className="absolute top-2 right-2 text-white hover:text-gray-300 bg-gray-800 bg-opacity-50 rounded-full p-1"
+              aria-label="Close"
+              type="button"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={imagePreview} 
+              alt="Enlarged shop photo" 
+              className="max-h-[80vh] max-w-full mx-auto object-contain"
+            />
+          </div>
+        </div>
+      )}
       
       {/* Bottom Navigation */}
       <BottomNavigation />
