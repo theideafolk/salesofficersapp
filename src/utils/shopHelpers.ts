@@ -6,23 +6,57 @@
  * @returns URL for opening the location in maps
  */
 export const getMapUrl = (gpsLocation: string | undefined): string => {
-  if (!gpsLocation) return '';
+  if (!gpsLocation) {
+    console.log('GPS location is undefined or empty');
+    return '';
+  }
   
   try {
+    console.log('Raw GPS location:', gpsLocation);
+    console.log('UserAgent:', navigator.userAgent);
+    console.log('Window location:', window.location.href);
+    
     // Extract coordinates from point string "(lng,lat)"
     const coordString = gpsLocation.toString().replace('(', '').replace(')', '');
-    const [lng, lat] = coordString.split(',').map(parseFloat);
+    console.log('Parsed coordinate string:', coordString);
+    
+    const coords = coordString.split(',');
+    if (coords.length !== 2) {
+      console.error('Invalid coordinate format, expected "lng,lat" but got:', coordString);
+      return '';
+    }
+    
+    const [lng, lat] = coords.map(coord => parseFloat(coord.trim()));
+    console.log('Parsed coordinates:', { lng, lat });
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error('Invalid coordinate values:', { lng, lat });
+      return '';
+    }
     
     // Check if iOS device
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    console.log('Is iOS device:', isIos);
     
+    let mapUrl;
     if (isIos) {
       // Apple Maps URL format
-      return `maps://?ll=${lat},${lng}&q=${lat},${lng}`;
+      mapUrl = `maps://maps.apple.com/?ll=${lat},${lng}&q=${lat},${lng}`;
     } else {
       // Google Maps URL format (works on Android and desktop)
-      return `https://maps.google.com/?q=${lat},${lng}`;
+      mapUrl = `https://maps.google.com/maps?q=${lat},${lng}`;
     }
+    
+    console.log('Generated map URL:', mapUrl);
+    console.log('Full map URL details:', {
+      url: mapUrl,
+      isIos: isIos,
+      latitude: lat,
+      longitude: lng,
+      originalPoint: gpsLocation
+    });
+    
+    return mapUrl;
   } catch (error) {
     console.error('Error parsing GPS location:', error);
     return '';

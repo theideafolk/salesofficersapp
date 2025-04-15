@@ -144,8 +144,16 @@ export const useNearbyShops = (
         const formattedShops = shops.map(shop => ({
           ...shop,
           // Convert any string dates to Date objects if needed
-          last_visit_date: shop.last_visit_date || null
+          last_visit_date: shop.last_visit_date || null,
+          // Ensure GPS location is included
+          gps_location: shop.gps_location || null
         }));
+        
+        console.log("Fetched shops with GPS locations:", formattedShops.map(s => ({ 
+          id: s.shop_id, 
+          name: s.name, 
+          gps: s.gps_location 
+        })));
         
         setNearbyShops(formattedShops);
         
@@ -273,6 +281,12 @@ export const useNearbyShops = (
         
         // Limit to 5 closest
         const closestShops = shopsWithDistance.slice(0, 5);
+        
+        console.log("Fallback shops with GPS locations:", closestShops.map(s => ({ 
+          id: s.shop_id, 
+          name: s.name, 
+          gps: s.gps_location 
+        })));
         
         await processShops(closestShops);
         

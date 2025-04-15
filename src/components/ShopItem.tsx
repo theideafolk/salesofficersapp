@@ -31,6 +31,34 @@ const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit }) => {
     onVisit(shop.shop_id);
   }, [shop.shop_id, onVisit]);
 
+  // Generate map URL when component renders
+  const mapUrl = shop.gps_location ? getMapUrl(shop.gps_location) : '';
+  console.log('Shop GPS location:', shop.gps_location);
+  console.log('Generated map URL:', mapUrl);
+  
+  // Handle map link click
+  const handleMapClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    console.log('Map link clicked');
+    console.log('Map URL being opened:', mapUrl);
+    console.log('Shop GPS location:', shop.gps_location);
+    
+    // Only prevent default if no valid map URL
+    if (!mapUrl) {
+      e.preventDefault();
+      console.error('No valid map URL available for this shop');
+    } else {
+      console.log('Opening map URL:', mapUrl);
+      // Log that we're continuing with default behavior
+      console.log('Continuing with default link behavior');
+      
+      // For testing only: Log whether this will open in a new tab
+      console.log('Target attribute:', e.currentTarget.getAttribute('target'));
+    }
+    
+    // Always stop propagation to prevent parent click handlers
+    e.stopPropagation();
+  };
+
   return (
     <div className="border-b pb-4">
       <div className="flex justify-between items-start">
@@ -38,15 +66,19 @@ const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit }) => {
           <h3 className="text-lg font-bold">{shop.name}</h3>
           <div className="flex items-center text-gray-600 mt-1">
             <MapPin className="h-4 w-4 mr-1 min-w-4 flex-shrink-0" />
-            <a 
-              href={getMapUrl(shop.gps_location)} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="line-clamp-1 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {truncateText(shop.address, 30)}
-            </a>
+            {mapUrl ? (
+              <a 
+                href={mapUrl}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="line-clamp-1 hover:underline text-gray-600"
+                onClick={handleMapClick}
+              >
+                {truncateText(shop.address, 30)}
+              </a>
+            ) : (
+              <span className="line-clamp-1">{truncateText(shop.address, 30)}</span>
+            )}
           </div>
           
           {/* Owner and phone information displayed side by side */}
@@ -61,7 +93,7 @@ const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit }) => {
             {shop.phone_number && isMobile() ? (
               <a 
                 href={getPhoneUrl(shop.phone_number)} 
-                className="hover:underline"
+                className="hover:underline text-gray-600"
                 onClick={(e) => e.stopPropagation()}
               >
                 {shop.phone_number}
