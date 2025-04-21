@@ -29,7 +29,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         variant="primary" 
         fullWidth
       >
-        VIEW ORDERS
+        PLACE ORDER
       </MainButton>
     </div>
   );

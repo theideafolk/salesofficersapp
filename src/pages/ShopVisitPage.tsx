@@ -386,9 +386,13 @@ const ShopVisitPage: React.FC = () => {
   
   // Handle "Place Order" button click in confirmation
   const handlePlaceOrder = () => {
-    // Navigate to orders page or specific order placement page
-    // For now, just return to shops with success message
-    navigate('/orders', { state: { fromVisit: true, shopId: shopId } });
+    // Navigate to the order placement page with necessary information
+    navigate(`/shops/${shopId}/order`, { 
+      state: { 
+        visitId: visitId,
+        shopName: shop?.name
+      } 
+    });
   };
   
   // Handle back button

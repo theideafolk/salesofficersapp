@@ -1,0 +1,504 @@
+// Review Order page component for reviewing and confirming an order
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { ArrowLeft, Minus, Plus, Gift, Loader2 } from 'lucide-react';
+import BottomNavigation from '../components/BottomNavigation';
+import { OrderItem, Product, Scheme } from '../types/products';
+import { formatCurrency } from '../utils/formatHelpers';
+
+interface LocationState {
+  orderItems: OrderItem[];
+  shopId: string;
+  visitId: string;
+  shopName: string;
+  totalValue: number;
+  products: Product[];
+}
+
+const ReviewOrderPage: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { orderItems: initialOrderItems, shopId, visitId, shopName, products = [] } = location.state as LocationState;
+  
+  // State variables
+  const [orderItems, setOrderItems] = useState<OrderItem[]>(initialOrderItems);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [schemes, setSchemes] = useState<Scheme[]>([]);
+  
+  // Fetch schemes on component mount
+  useEffect(() => {
+    const fetchSchemes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('schemes')
+          .select('*')
+          .eq('is_active', true);
+          
+        if (error) throw error;
+        if (data) setSchemes(data);
+      } catch (err) {
+        console.error('Error fetching schemes:', err);
+      }
+    };
+    
+    fetchSchemes();
+  }, []);
+  
+  // Get regular items and calculate totals
+  const regularItems = orderItems.filter(item => !item.is_free);
+  const totalItemsCount = regularItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalValue = regularItems.reduce((sum, item) => sum + item.amount, 0);
+  
+  // Apply schemes based on current regular items
+  const applySchemes = (items: OrderItem[]): OrderItem[] => {
+    // First, filter to regular items only (non-free)
+    const regularItems = items.filter(item => !item.is_free);
+    let updatedItems = [...regularItems];
+    
+    // Process each regular item to apply schemes
+    regularItems.forEach(item => {
+      const product = products.find(p => p.product_id === item.product_id);
+      if (!product || !product.product_scheme_id) return;
+      
+      const scheme = schemes.find(s => s.scheme_id === product.product_scheme_id);
+      if (!scheme) return;
+      
+      // Skip if quantity doesn't meet the buy quantity
+      if (!product.product_scheme_buy_qty || item.quantity < product.product_scheme_buy_qty) {
+        return;
+      }
+      
+      // Calculate how many sets of free items to give
+      const setsCount = Math.floor(item.quantity / product.product_scheme_buy_qty!);
+      
+      switch(scheme.scheme_id) {
+        case 1: // Buy X Get Y
+          // Always add free quantity for scheme 1
+          if (product.product_scheme_get_qty) {
+            updatedItems.push({
+              product_id: product.product_id,
+              name: product.name,
+              category: product.category,
+              quantity: setsCount * product.product_scheme_get_qty,
+              unit_price: 0, // Free items have zero price
+              amount: 0,
+              is_free: true,
+              free_gift_for: product.product_id,
+              scheme_id: 1,
+              unit_of_measure: product.unit_of_measure
+            });
+          }
+          break;
+          
+        case 2: // Buy X Get Y OR product_id
+          // For review page, we'll just use whatever choice was made in the place order page
+          // Find the existing choice by checking if there's a free item of the same product or a free offer product
+          const hasSameProductFree = orderItems.some(oi => 
+            oi.is_free && oi.product_id === product.product_id && oi.free_gift_for === product.product_id
+          );
+          
+          const hasOfferProductFree = product.product_item_offer_id && orderItems.some(oi => 
+            oi.is_free && oi.product_id === product.product_item_offer_id && oi.free_gift_for === product.product_id
+          );
+          
+          if ((hasSameProductFree || !hasOfferProductFree) && product.product_scheme_get_qty) {
+            // Add free items of the same product
+            updatedItems.push({
+              product_id: product.product_id,
+              name: product.name,
+              category: product.category,
+              quantity: setsCount * product.product_scheme_get_qty,
+              unit_price: 0,
+              amount: 0,
+              is_free: true,
+              free_gift_for: product.product_id,
+              scheme_id: 2,
+              unit_of_measure: product.unit_of_measure
+            });
+          } else if (hasOfferProductFree && product.product_item_offer_id) {
+            // Add offer product
+            const offerProduct = products.find(p => p.product_id === product.product_item_offer_id);
+            if (offerProduct) {
+              updatedItems.push({
+                product_id: offerProduct.product_id,
+                name: offerProduct.name,
+                category: offerProduct.category,
+                quantity: setsCount, // One offer product per set
+                unit_price: 0,
+                amount: 0,
+                is_free: true,
+                free_gift_for: product.product_id,
+                scheme_id: 2,
+                unit_of_measure: offerProduct.unit_of_measure
+              });
+            }
+          }
+          break;
+          
+        case 3: // Buy X Get Y AND product_id
+          // Add both free quantity and offer product
+          if (product.product_scheme_get_qty) {
+            // Add free items of the same product
+            updatedItems.push({
+              product_id: product.product_id,
+              name: product.name,
+              category: product.category,
+              quantity: setsCount * product.product_scheme_get_qty,
+              unit_price: 0,
+              amount: 0,
+              is_free: true,
+              free_gift_for: product.product_id,
+              scheme_id: 3,
+              unit_of_measure: product.unit_of_measure
+            });
+          }
+          
+          // Add offer product if it exists
+          if (product.product_item_offer_id) {
+            const offerProduct = products.find(p => p.product_id === product.product_item_offer_id);
+            if (offerProduct) {
+              updatedItems.push({
+                product_id: offerProduct.product_id,
+                name: offerProduct.name,
+                category: offerProduct.category,
+                quantity: setsCount, // One offer product per set
+                unit_price: 0,
+                amount: 0,
+                is_free: true,
+                free_gift_for: product.product_id,
+                scheme_id: 3,
+                unit_of_measure: offerProduct.unit_of_measure
+              });
+            }
+          }
+          break;
+      }
+    });
+    
+    // Check if order qualifies for order-level scheme (scheme_id 4)
+    const orderScheme = schemes.find(s => s.scheme_id === 4);
+    if (orderScheme && orderScheme.scheme_min_price) {
+      const totalOrderValue = updatedItems
+        .filter(item => !item.is_free)
+        .reduce((sum, item) => sum + item.amount, 0);
+      
+      if (totalOrderValue >= orderScheme.scheme_min_price) {
+        // Find if we already have a traveler bag in the order
+        const existingBagItem = updatedItems.find(item => item.is_free && item.scheme_id === 4);
+        
+        if (!existingBagItem) {
+          // Add the free traveler bag
+          updatedItems.push({
+            product_id: 'order-scheme-bag', // Special ID for the bag
+            name: 'Traveler Bag',
+            category: 'Accessories',
+            quantity: 1,
+            unit_price: 0,
+            amount: 0,
+            is_free: true,
+            scheme_id: 4,
+            unit_of_measure: 'Item'
+          });
+        }
+      } else {
+        // Remove any existing bag if order no longer qualifies
+        updatedItems = updatedItems.filter(item => !(item.is_free && item.scheme_id === 4));
+      }
+    }
+    
+    return updatedItems;
+  };
+  
+  // Update quantity and recalculate amounts
+  const handleQuantityChange = (productId: string, action: 'increase' | 'decrease') => {
+    const updatedItems = [...orderItems];
+    const itemIndex = updatedItems.findIndex(item => item.product_id === productId && !item.is_free);
+    
+    if (itemIndex === -1) return;
+    
+    const item = updatedItems[itemIndex];
+    
+    if (action === 'increase') {
+      // Increase quantity
+      updatedItems[itemIndex] = {
+        ...item,
+        quantity: item.quantity + 1,
+        amount: (item.quantity + 1) * item.unit_price
+      };
+    } else {
+      // Decrease quantity, remove if reaches 0
+      if (item.quantity === 1) {
+        updatedItems.splice(itemIndex, 1);
+      } else {
+        updatedItems[itemIndex] = {
+          ...item,
+          quantity: item.quantity - 1,
+          amount: (item.quantity - 1) * item.unit_price
+        };
+      }
+    }
+    
+    // Remove free items first to allow for recalculation
+    const regularItems = updatedItems.filter(item => !item.is_free);
+    
+    // Update the order items
+    setOrderItems(applySchemes(regularItems));
+  };
+  
+  // Handle back button navigation
+  const handleBack = () => {
+    // Navigate back with current order items to preserve cart state
+    navigate(`/shops/${shopId}/order`, { 
+      state: { 
+        visitId, 
+        shopName,
+        orderItems
+      },
+      replace: true 
+    });
+  };
+  
+  // Handle placing the order
+  const handlePlaceOrder = async () => {
+    if (!visitId || !shopId || regularItems.length === 0) {
+      setError('Missing required information to place order');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Insert orders for regular items
+      const orderInserts = regularItems.map(item => ({
+        visit_id: visitId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        amount: item.amount,
+      }));
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .insert(orderInserts)
+        .select('order_id');
+        
+      if (error) {
+        throw error;
+      }
+      
+      // For free items (except traveler bag which isn't a real product), insert with zero amount
+      const freeItemsToInsert = orderItems
+        .filter(item => item.is_free && item.product_id !== 'order-scheme-bag')
+        .map(item => ({
+          visit_id: visitId,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          amount: 0, // Free items have zero amount
+        }));
+      
+      if (freeItemsToInsert.length > 0) {
+        const { error: freeItemsError } = await supabase
+          .from('orders')
+          .insert(freeItemsToInsert);
+          
+        if (freeItemsError) {
+          console.error('Error inserting free items:', freeItemsError);
+          // Continue anyway since regular items were inserted successfully
+        }
+      }
+      
+      // Order placed successfully
+      setSuccess(true);
+      
+      // Show success for 2 seconds then navigate
+      setTimeout(() => {
+        navigate('/orders', { 
+          state: { 
+            success: true, 
+            message: 'Order placed successfully' 
+          } 
+        });
+      }, 2000);
+      
+    } catch (err) {
+      console.error('Error placing order:', err);
+      setError('Failed to place order. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="flex items-center justify-center p-4 relative border-b">
+        <button 
+          onClick={handleBack}
+          className="absolute left-4 text-black"
+          aria-label="Back"
+        >
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-xl font-bold">Cart Summary</h1>
+      </header>
+      
+      {/* Main Content */}
+      <main className="flex-grow px-4 pb-20">
+        {/* Error Message */}
+        {error && (
+          <div className="my-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className="my-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md text-center">
+            <div className="font-bold">Order placed successfully</div>
+            <p>Redirecting to orders page...</p>
+          </div>
+        )}
+        
+        {/* Cart Items Header */}
+        <div className="flex justify-between items-center mt-4 mb-6">
+          <h2 className="text-2xl font-bold">Cart Items</h2>
+          <span className="text-lg">{shopName}</span>
+        </div>
+        
+        {/* Product List */}
+        <div className="space-y-4">
+          {regularItems.map((item) => (
+            <div key={item.product_id} className="border rounded-lg p-4">
+              <div className="flex justify-between mb-1">
+                <h3 className="text-lg font-bold">{item.name}</h3>
+                <span className="text-lg font-bold">{formatCurrency(item.amount)}</span>
+              </div>
+              
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    {item.unit_of_measure || `Box of ${item.quantity}`}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    {formatCurrency(item.unit_price)} each
+                  </p>
+                  
+                  {/* Display free items associated with this product */}
+                  {orderItems.some(freeItem => 
+                    freeItem.is_free && 
+                    freeItem.free_gift_for === item.product_id &&
+                    freeItem.product_id === item.product_id
+                  ) && (
+                    <div className="mt-1 text-xs text-green-600 flex items-center">
+                      <Gift size={12} className="mr-1" />
+                      <span>
+                        {orderItems
+                          .filter(freeItem => 
+                            freeItem.is_free && 
+                            freeItem.free_gift_for === item.product_id && 
+                            freeItem.product_id === item.product_id
+                          )
+                          .reduce((sum, item) => sum + item.quantity, 0)
+                        } free included
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Quantity Controls */}
+                <div className="flex items-center border rounded-lg overflow-hidden">
+                  <button 
+                    onClick={() => handleQuantityChange(item.product_id, 'decrease')} 
+                    className="h-10 w-12 flex items-center justify-center text-2xl"
+                  >
+                    <Minus size={20} />
+                  </button>
+                  <div className="h-10 w-12 flex items-center justify-center text-lg">
+                    {item.quantity}
+                  </div>
+                  <button 
+                    onClick={() => handleQuantityChange(item.product_id, 'increase')} 
+                    className="h-10 w-12 flex items-center justify-center text-2xl"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Free items displayed separately if they're different products */}
+        {orderItems.some(item => item.is_free && item.product_id !== item.free_gift_for) && (
+          <div className="mt-4">
+            <h3 className="text-lg font-bold mb-2">Free Items</h3>
+            <div className="space-y-4">
+              {orderItems
+                .filter(item => item.is_free && item.product_id !== item.free_gift_for)
+                .map((item, index) => (
+                  <div key={`${item.product_id}-${index}`} className="border rounded-lg p-4 bg-green-50">
+                    <div className="flex justify-between mb-1">
+                      <h3 className="text-md font-bold flex items-center">
+                        <Gift size={16} className="mr-2 text-green-600" />
+                        {item.name}
+                      </h3>
+                      <span className="text-md font-bold text-green-600">FREE</span>
+                    </div>
+                    <p className="text-sm text-gray-700">Quantity: {item.quantity}</p>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        )}
+        
+        {/* Notes Field */}
+        <div className="mt-6 mb-6">
+          <input
+            type="text"
+            placeholder="Add any notes (optional)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full border rounded-lg p-4 text-gray-700"
+          />
+        </div>
+        
+        {/* Order Summary */}
+        <div className="flex justify-between items-center mb-6">
+          <span className="text-xl font-bold">Total Items: {totalItemsCount}</span>
+          <span className="text-xl font-bold">Subtotal: {formatCurrency(totalValue)}</span>
+        </div>
+        
+        {/* Confirm Order Button */}
+        <button
+          onClick={handlePlaceOrder}
+          disabled={loading || regularItems.length === 0}
+          className={`w-full py-5 rounded-lg text-white font-bold text-xl flex items-center justify-center ${
+            loading || regularItems.length === 0 
+              ? 'bg-green-400 cursor-not-allowed' 
+              : 'bg-green-600 hover:bg-green-700'
+          }`}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin mr-2 h-5 w-5" />
+              Processing...
+            </>
+          ) : (
+            'Confirm Order'
+          )}
+        </button>
+      </main>
+      
+      {/* Bottom Navigation */}
+      <BottomNavigation />
+    </div>
+  );
+};
+
+export default ReviewOrderPage;

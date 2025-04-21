@@ -18,7 +18,7 @@ export const formatElapsedTime = (milliseconds: number): string => {
  * @returns Formatted currency string
  */
 export const formatCurrency = (amount: number): string => {
-  return `₹${amount.toLocaleString('en-IN')}`;
+  return `₹${amount.toFixed(2)}`;
 };
 
 /**
