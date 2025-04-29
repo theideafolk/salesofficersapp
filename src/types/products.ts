@@ -38,6 +38,8 @@ export interface OrderItem {
   is_free?: boolean; // Flag to indicate if this is a free item
   free_gift_for?: string; // Product ID for which this is a free gift
   scheme_id?: number; // The scheme ID that generated this item
+  free_qty?: number; // For storing the free quantity in BOGO schemes
+  free_product_id?: string; // For storing the free product ID in gift schemes
 }
 
 // Schema choice for tracking user selections for schemes

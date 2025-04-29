@@ -91,7 +91,8 @@ const ReviewOrderPage: React.FC = () => {
               is_free: true,
               free_gift_for: product.product_id,
               scheme_id: 1,
-              unit_of_measure: product.unit_of_measure
+              unit_of_measure: product.unit_of_measure,
+              free_qty: setsCount * product.product_scheme_get_qty
             });
           }
           break;
@@ -119,7 +120,8 @@ const ReviewOrderPage: React.FC = () => {
               is_free: true,
               free_gift_for: product.product_id,
               scheme_id: 2,
-              unit_of_measure: product.unit_of_measure
+              unit_of_measure: product.unit_of_measure,
+              free_qty: setsCount * product.product_scheme_get_qty
             });
           } else if (hasOfferProductFree && product.product_item_offer_id) {
             // Add offer product
@@ -135,7 +137,8 @@ const ReviewOrderPage: React.FC = () => {
                 is_free: true,
                 free_gift_for: product.product_id,
                 scheme_id: 2,
-                unit_of_measure: offerProduct.unit_of_measure
+                unit_of_measure: offerProduct.unit_of_measure,
+                free_product_id: offerProduct.product_id
               });
             }
           }
@@ -155,7 +158,8 @@ const ReviewOrderPage: React.FC = () => {
               is_free: true,
               free_gift_for: product.product_id,
               scheme_id: 3,
-              unit_of_measure: product.unit_of_measure
+              unit_of_measure: product.unit_of_measure,
+              free_qty: setsCount * product.product_scheme_get_qty
             });
           }
           
@@ -173,7 +177,8 @@ const ReviewOrderPage: React.FC = () => {
                 is_free: true,
                 free_gift_for: product.product_id,
                 scheme_id: 3,
-                unit_of_measure: offerProduct.unit_of_measure
+                unit_of_measure: offerProduct.unit_of_measure,
+                free_product_id: offerProduct.product_id
               });
             }
           }
@@ -203,7 +208,8 @@ const ReviewOrderPage: React.FC = () => {
             amount: 0,
             is_free: true,
             scheme_id: 4,
-            unit_of_measure: 'Item'
+            unit_of_measure: 'Item',
+            free_qty: 1
           });
         }
       } else {
@@ -275,44 +281,47 @@ const ReviewOrderPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // Generate a single order_id for this order
+      const order_id = crypto.randomUUID();
+      
       // Insert orders for regular items
-      const orderInserts = regularItems.map(item => ({
-        visit_id: visitId,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        amount: item.amount,
-      }));
+      const orderInserts = regularItems.map(item => {
+        // Find free item related to this regular item
+        const relatedFreeItems = orderItems.filter(
+          oi => oi.is_free && oi.free_gift_for === item.product_id
+        );
+
+        // Determine if there's a free quantity of the same product
+        const freeQtyItem = relatedFreeItems.find(
+          oi => oi.product_id === item.product_id && oi.free_qty
+        );
+
+        // Determine if there's a free product
+        const freeProductItem = relatedFreeItems.find(
+          oi => oi.product_id !== item.product_id && oi.free_product_id
+        );
+
+        return {
+          order_id: order_id, // Use the same order_id for all items
+          visit_id: visitId,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          amount: item.amount,
+          free_qty: freeQtyItem?.free_qty || 0,
+          free_product_id: freeProductItem?.product_id || null,
+          scheme_id: freeQtyItem?.scheme_id || freeProductItem?.scheme_id || null
+        };
+      });
       
       const { data, error } = await supabase
         .from('orders')
         .insert(orderInserts)
-        .select('order_id');
+        .select();
         
       if (error) {
         throw error;
       }
-      
-      // For free items (except traveler bag which isn't a real product), insert with zero amount
-      const freeItemsToInsert = orderItems
-        .filter(item => item.is_free && item.product_id !== 'order-scheme-bag')
-        .map(item => ({
-          visit_id: visitId,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          amount: 0, // Free items have zero amount
-        }));
-      
-      if (freeItemsToInsert.length > 0) {
-        const { error: freeItemsError } = await supabase
-          .from('orders')
-          .insert(freeItemsToInsert);
-          
-        if (freeItemsError) {
-          console.error('Error inserting free items:', freeItemsError);
-          // Continue anyway since regular items were inserted successfully
-        }
-      }
-      
+
       // Order placed successfully
       setSuccess(true);
       

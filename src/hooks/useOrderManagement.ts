@@ -100,7 +100,8 @@ export const useOrderManagement = (shopId: string) => {
               is_free: true,
               free_gift_for: product.product_id,
               scheme_id: 1,
-              unit_of_measure: product.unit_of_measure
+              unit_of_measure: product.unit_of_measure,
+              free_qty: setsCount * product.product_scheme_get_qty
             });
           }
           break;
@@ -118,7 +119,8 @@ export const useOrderManagement = (shopId: string) => {
               is_free: true,
               free_gift_for: product.product_id,
               scheme_id: 2,
-              unit_of_measure: product.unit_of_measure
+              unit_of_measure: product.unit_of_measure,
+              free_qty: setsCount * product.product_scheme_get_qty
             });
           } else if (chosenOption === 'offerProduct' && product.product_item_offer_id) {
             // Add offer product
@@ -134,7 +136,8 @@ export const useOrderManagement = (shopId: string) => {
                 is_free: true,
                 free_gift_for: product.product_id,
                 scheme_id: 2,
-                unit_of_measure: offerProduct.unit_of_measure
+                unit_of_measure: offerProduct.unit_of_measure,
+                free_product_id: offerProduct.product_id
               });
             }
           }
@@ -154,7 +157,8 @@ export const useOrderManagement = (shopId: string) => {
               is_free: true,
               free_gift_for: product.product_id,
               scheme_id: 3,
-              unit_of_measure: product.unit_of_measure
+              unit_of_measure: product.unit_of_measure,
+              free_qty: setsCount * product.product_scheme_get_qty
             });
           }
           
@@ -172,7 +176,8 @@ export const useOrderManagement = (shopId: string) => {
                 is_free: true,
                 free_gift_for: product.product_id,
                 scheme_id: 3,
-                unit_of_measure: offerProduct.unit_of_measure
+                unit_of_measure: offerProduct.unit_of_measure,
+                free_product_id: offerProduct.product_id
               });
             }
           }
@@ -202,7 +207,8 @@ export const useOrderManagement = (shopId: string) => {
             amount: 0,
             is_free: true,
             scheme_id: 4,
-            unit_of_measure: 'Item'
+            unit_of_measure: 'Item',
+            free_qty: 1
           });
         }
       } else {

@@ -10,6 +10,9 @@ import { useRecentVisits } from '../hooks/useRecentVisits';
 import { useWorkStatus } from '../hooks/useWorkStatus';
 import { Search, Plus, AlertCircle, Menu, LogOut, Clock, CheckCircle, X } from 'lucide-react';
 
+// Target number of shops to visit per day
+const TARGET_SHOPS_PER_DAY = 25;
+
 const ShopsPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -103,6 +106,9 @@ const ShopsPage: React.FC = () => {
       setError(shopsError);
     }
   }, [shopsError]);
+
+  // Calculate remaining shops to visit
+  const remainingVisits = TARGET_SHOPS_PER_DAY - recentVisits.length;
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -233,7 +239,7 @@ const ShopsPage: React.FC = () => {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">VISITS PENDING</h2>
-            <span className="text-gray-600 font-medium">{nearbyShops.length} left</span>
+            <span className="text-gray-600 font-medium">{remainingVisits} left</span>
           </div>
           
           {loading && nearbyShops.length === 0 ? (

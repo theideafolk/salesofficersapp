@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 
+// Target number of shops to visit per day
+const TARGET_SHOPS_PER_DAY = 25;
+
 interface DailyStats {
   visitedShops: number;
   totalShops: number;
@@ -18,7 +21,7 @@ interface DailyStats {
 export const useDailyStats = (user: User | null) => {
   const [dailyStats, setDailyStats] = useState<DailyStats>({
     visitedShops: 0,
-    totalShops: 25, // Default target value
+    totalShops: TARGET_SHOPS_PER_DAY, // Default target value
     orders: 0,
     sales: 0
   });
@@ -37,7 +40,7 @@ export const useDailyStats = (user: User | null) => {
           .gte('visit_time', today.toISOString())
           .is('is_deleted', false);
           
-        // Get orders for today and calculate total sales
+        // Get orders for today with DISTINCT order_ids
         const { data: orders, error: ordersError } = await supabase
           .from('orders')
           .select(`
@@ -53,14 +56,18 @@ export const useDailyStats = (user: User | null) => {
           .gte('visits.visit_time', today.toISOString())
           .is('is_deleted', false);
           
-        if (!visitsError && !ordersError) {
+        if (!visitsError && !ordersError && orders) {
+          // Get unique order IDs (since we're storing one row per product in the order)
+          const uniqueOrderIds = new Set(orders.map(item => item.order_id));
+          const orderCount = uniqueOrderIds.size;
+          
           // Calculate total sales amount
-          const totalSales = orders ? orders.reduce((sum, order) => sum + Number(order.amount), 0) : 0;
+          const totalSales = orders.reduce((sum, order) => sum + Number(order.amount), 0);
           
           setDailyStats({
             ...dailyStats,
             visitedShops: visits ? visits.length : 0,
-            orders: orders ? orders.length : 0,
+            orders: orderCount, // Use the count of unique order IDs
             sales: totalSales
           });
         }

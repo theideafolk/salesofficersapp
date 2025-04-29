@@ -1,10 +1,20 @@
 // Utility functions for handling file uploads to Supabase storage
 import { supabase } from '../lib/supabase';
+import imageCompression from 'browser-image-compression';
 
 // Constants for retry mechanism
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // ms
 const STORAGE_CACHE_KEY = 'storage_bucket_cache';
+
+// Image compression options
+const compressionOptions = {
+  maxSizeMB: 1,           // Max file size in MB (default = 1MB)
+  maxWidthOrHeight: 1920, // Resize to max width/height if needed
+  useWebWorker: true,     // Use WebWorker for better performance
+  fileType: 'image/jpeg', // Convert to JPEG format for better compression
+  initialQuality: 0.7     // Initial quality (0 to 1)
+};
 
 /**
  * Sleep function for delay between retries
@@ -75,6 +85,36 @@ const checkBucketExists = async (bucketName: string): Promise<boolean> => {
 };
 
 /**
+ * Compresses an image file before uploading
+ * @param file Original image file
+ * @param options Compression options
+ * @returns Compressed image file
+ */
+const compressImage = async (file: File, options = compressionOptions): Promise<File> => {
+  try {
+    console.log(`Compressing image: ${file.name} (${(file.size / 1024).toFixed(2)}KB)...`);
+    
+    // Determine if compression is needed (skip for small images)
+    if (file.size <= options.maxSizeMB * 1024 * 1024) {
+      console.log('Image already under size limit, skipping compression');
+      return file;
+    }
+    
+    // Perform compression
+    const compressedFile = await imageCompression(file, options);
+    
+    console.log(`Compression complete: ${compressedFile.name} (${(compressedFile.size / 1024).toFixed(2)}KB)`);
+    console.log(`Compression ratio: ${(file.size / compressedFile.size).toFixed(2)}x`);
+    
+    return compressedFile;
+  } catch (error) {
+    console.error('Error during image compression:', error);
+    // If compression fails, return the original file
+    return file;
+  }
+};
+
+/**
  * Uploads a file to a specific bucket in Supabase storage
  * @param file The file to upload
  * @param bucketName The name of the bucket to upload to
@@ -98,7 +138,7 @@ export const uploadFile = async (
     // Check file size (5MB limit to match bucket config)
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds limit of 5MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      console.log(`File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds limit, will attempt compression`);
     }
 
     // Check if the bucket exists using retry mechanism
@@ -107,6 +147,16 @@ export const uploadFile = async (
     if (!bucketExists) {
       // As a fallback, try to directly upload anyway - the bucket might exist but listBuckets might fail
       console.log(`Bucket ${bucketName} not found in list, but attempting upload anyway as fallback...`);
+    }
+    
+    // Check if the file is an image that needs compression
+    let fileToUpload = file;
+    if (file.type.startsWith('image/')) {
+      fileToUpload = await compressImage(file);
+      if (onProgress) {
+        // Report compression progress (50%)
+        onProgress(50);
+      }
     }
     
     // Generate a unique filename with timestamp and random string
@@ -119,7 +169,7 @@ export const uploadFile = async (
     console.log(`Prepared filename: ${fileName}`);
     
     // Determine content type based on file extension
-    let contentType = file.type;
+    let contentType = fileToUpload.type;
     if (!contentType || contentType === 'application/octet-stream') {
       // Map common image extensions to MIME types
       const mimeTypes: Record<string, string> = {
@@ -146,14 +196,21 @@ export const uploadFile = async (
         // Upload the file with progress tracking
         const { data, error } = await supabase.storage
           .from(bucketName)
-          .upload(fileName, file, {
+          .upload(fileName, fileToUpload, {
             cacheControl: '3600',
             upsert: true,
             contentType,
             onUploadProgress: (progress) => {
               if (onProgress) {
-                const percent = Math.round((progress.loaded / progress.total) * 100);
-                onProgress(percent);
+                if (fileToUpload !== file) {
+                  // If we compressed, then upload progress is the second half (50%-100%)
+                  const percent = 50 + Math.round((progress.loaded / progress.total) * 50);
+                  onProgress(percent);
+                } else {
+                  // No compression, so progress is 0-100%
+                  const percent = Math.round((progress.loaded / progress.total) * 100);
+                  onProgress(percent);
+                }
               }
             }
           });
