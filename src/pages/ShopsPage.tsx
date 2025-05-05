@@ -19,6 +19,7 @@ const ShopsPage: React.FC = () => {
   const locationState = useLocation();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'nearby' | 'assigned'>('nearby');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +97,11 @@ const ShopsPage: React.FC = () => {
     await signOut();
     navigate('/login');
   }, [signOut, navigate]);
+
+  // Handle tab change
+  const handleTabChange = (tab: 'nearby' | 'assigned') => {
+    setActiveTab(tab);
+  };
   
   // Check if the user is allowed to perform actions (day started and not on break)
   const canPerformActions = dayStarted && !dayEnded && !isOnBreak;
@@ -234,6 +240,26 @@ const ShopsPage: React.FC = () => {
           <Plus className="mr-2 h-5 w-5" />
           New Shop
         </button>
+
+        {/* Shop selection tabs */}
+        <div className="flex rounded-full bg-gray-100 p-1 mb-6">
+          <button
+            className={`flex-1 py-2 rounded-full ${
+              activeTab === 'nearby' ? 'bg-blue-500 text-white' : 'text-gray-700'
+            }`}
+            onClick={() => handleTabChange('nearby')}
+          >
+            Nearby Shops
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-full ${
+              activeTab === 'assigned' ? 'bg-blue-500 text-white' : 'text-gray-700'
+            }`}
+            onClick={() => handleTabChange('assigned')}
+          >
+            Assigned Shops
+          </button>
+        </div>
         
         {/* Pending Visits Section */}
         <div className="mb-6">
@@ -242,24 +268,32 @@ const ShopsPage: React.FC = () => {
             <span className="text-gray-600 font-medium">{remainingVisits} left</span>
           </div>
           
-          {loading && nearbyShops.length === 0 ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-            </div>
-          ) : nearbyShops.length > 0 ? (
-            <div className="space-y-4">
-              {nearbyShops.map((shop) => (
-                <ShopItem
-                  key={shop.shop_id}
-                  shop={shop}
-                  onVisit={handleVisitShop}
-                  canVisit={canPerformActions && !checkingStatus}
-                />
-              ))}
-            </div>
+          {activeTab === 'nearby' ? (
+            // Nearby Shops View
+            loading && nearbyShops.length === 0 ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+              </div>
+            ) : nearbyShops.length > 0 ? (
+              <div className="space-y-4">
+                {nearbyShops.map((shop) => (
+                  <ShopItem
+                    key={shop.shop_id}
+                    shop={shop}
+                    onVisit={handleVisitShop}
+                    canVisit={canPerformActions && !checkingStatus}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                No shops found nearby. Try adding a new shop or check your location settings.
+              </div>
+            )
           ) : (
-            <div className="text-center py-6 text-gray-500">
-              No shops found nearby. Try adding a new shop.
+            // Assigned Shops View
+            <div className="text-center py-8 text-gray-500">
+              No shops are assigned to you for today.
             </div>
           )}
         </div>

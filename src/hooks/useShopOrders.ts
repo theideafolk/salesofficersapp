@@ -68,29 +68,29 @@ export const useShopOrders = (shopId: string | null) => {
         }
         
         if (orderData) {
-          // Group by order date and order_id
+          // Group by order_id only
           const ordersMap = new Map<string, Order>();
 
           orderData.forEach(item => {
-            // Ensure created_at is a valid date before parsing
-            const createdDate = new Date(item.created_at);
-            // Format the date to a simple ISO string format (YYYY-MM-DD)
-            const orderDate = createdDate.toISOString().split('T')[0];
             const orderId = item.order_id;
-            const orderKey = `${orderDate}-${orderId}`;
             
             // Create or update order in the map
-            if (!ordersMap.has(orderKey)) {
-              ordersMap.set(orderKey, {
+            if (!ordersMap.has(orderId)) {
+              ordersMap.set(orderId, {
                 order_id: orderId,
-                date: orderDate, // Store as ISO date string for reliable sorting/formatting
+                date: item.created_at, // Store the created_at timestamp
                 amount: 0, // Will accumulate below
                 status: 'placed', // All orders have 'placed' status now
                 items: []
               });
             }
             
-            const order = ordersMap.get(orderKey)!;
+            const order = ordersMap.get(orderId)!;
+            
+            // Update date if this item has a more recent timestamp
+            if (new Date(item.created_at) > new Date(order.date)) {
+              order.date = item.created_at;
+            }
             
             // Add to total amount
             order.amount += Number(item.amount);
@@ -113,8 +113,8 @@ export const useShopOrders = (shopId: string | null) => {
           // Convert map to array and sort by date (newest first)
           const ordersArray = Array.from(ordersMap.values())
             .sort((a, b) => {
-              // Using ISO format strings allows for direct string comparison
-              return b.date.localeCompare(a.date);
+              // Sort by created_at timestamp
+              return new Date(b.date).getTime() - new Date(a.date).getTime();
             });
           
           setOrders(ordersArray);

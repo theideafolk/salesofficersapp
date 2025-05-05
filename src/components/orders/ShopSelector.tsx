@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatLastVisitDate } from '../../utils/shopHelpers';
-import { MapPin } from 'lucide-react';
+import { MapPin, Plus, History } from 'lucide-react';
 
 interface Shop {
   shop_id: string;
@@ -30,6 +30,8 @@ interface ShopSelectorProps {
   onSelectShop: (shopId: string, shopName: string) => void;
   loading: boolean;
   nearbyShopsLoading: boolean;
+  onNewOrder?: (shopId: string, shopName: string) => void;
+  onViewHistory?: (shopId: string, shopName: string) => void;
 }
 
 const ShopSelector: React.FC<ShopSelectorProps> = ({
@@ -41,7 +43,9 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
   nearbyShops,
   onSelectShop,
   loading,
-  nearbyShopsLoading
+  nearbyShopsLoading,
+  onNewOrder,
+  onViewHistory
 }) => {
   // Filter shops based on search term
   const filteredVisitedShops = searchTerm 
@@ -109,12 +113,22 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                     <h3 className="text-xl font-bold">{shop.shop_name}</h3>
                     <p className="text-gray-600">Visited at {shop.visit_time}</p>
                   </div>
-                  <button
-                    onClick={() => onSelectShop(shop.shop_id, shop.shop_name)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg"
-                  >
-                    Place Order
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => onNewOrder ? onNewOrder(shop.shop_id, shop.shop_name) : onSelectShop(shop.shop_id, shop.shop_name)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg"
+                      aria-label="New Order"
+                    >
+                      <Plus size={20} />
+                    </button>
+                    <button
+                      onClick={() => onViewHistory ? onViewHistory(shop.shop_id, shop.shop_name) : onSelectShop(shop.shop_id, shop.shop_name)}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg"
+                      aria-label="Order History"
+                    >
+                      <History size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -147,12 +161,22 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => onSelectShop(shop.shop_id, shop.name)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg"
-                  >
-                    Place Order
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => onNewOrder ? onNewOrder(shop.shop_id, shop.name) : onSelectShop(shop.shop_id, shop.name)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg"
+                      aria-label="New Order"
+                    >
+                      <Plus size={20} />
+                    </button>
+                    <button
+                      onClick={() => onViewHistory ? onViewHistory(shop.shop_id, shop.name) : onSelectShop(shop.shop_id, shop.name)}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg"
+                      aria-label="Order History"
+                    >
+                      <History size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -25,12 +25,14 @@ interface Order {
 interface ShopOrdersListProps {
   orders: Order[];
   onOpenOrderDetails: (order: Order) => void;
+  onEditOrder: (order: Order) => void;
   loading: boolean;
 }
 
 const ShopOrdersList: React.FC<ShopOrdersListProps> = ({ 
   orders, 
   onOpenOrderDetails,
+  onEditOrder,
   loading 
 }) => {
   // Format date for display
@@ -85,12 +87,20 @@ const ShopOrdersList: React.FC<ShopOrdersListProps> = ({
             
             <div className="flex flex-col items-end">
               <span className="text-xl font-bold">{formatCurrency(order.amount)}</span>
-              <button 
-                className="text-blue-500 font-medium mt-1"
-                onClick={() => onOpenOrderDetails(order)}
-              >
-                VIEW
-              </button>
+              <div className="flex space-x-4 mt-1">
+                <button 
+                  className="text-blue-500 font-medium"
+                  onClick={() => onOpenOrderDetails(order)}
+                >
+                  VIEW
+                </button>
+                <button 
+                  className="text-green-500 font-medium"
+                  onClick={() => onEditOrder(order)}
+                >
+                  EDIT
+                </button>
+              </div>
             </div>
           </div>
         </div>

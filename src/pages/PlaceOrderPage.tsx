@@ -20,6 +20,8 @@ const PlaceOrderPage: React.FC = () => {
   const visitId = location.state?.visitId as string;
   const shopName = location.state?.shopName as string;
   const savedOrderItems = location.state?.orderItems as OrderItem[] | undefined;
+  const orderToEdit = location.state?.orderToEdit;
+  const isEditing = location.state?.isEditing || false;
   
   // State variables
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,12 +52,26 @@ const PlaceOrderPage: React.FC = () => {
     setOrderItems
   } = useOrderManagement(shopId || '');
 
-  // Initialize orderItems if returning from review page
+  // Initialize orderItems if returning from review page or editing an order
   useEffect(() => {
     if (savedOrderItems && savedOrderItems.length > 0) {
       setOrderItems(savedOrderItems);
+    } else if (isEditing && orderToEdit && orderToEdit.items) {
+      // Convert order items to the format expected by the order management hook
+      const editItems = orderToEdit.items.map(item => ({
+        product_id: item.product_id,
+        name: item.product_name,
+        category: item.category || '',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        amount: item.amount,
+        unit_of_measure: item.unit_of_measure,
+        is_free: false // Regular items are not free
+      }));
+      
+      setOrderItems(editItems);
     }
-  }, [savedOrderItems, setOrderItems]);
+  }, [savedOrderItems, orderToEdit, isEditing, setOrderItems]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -110,10 +126,12 @@ const PlaceOrderPage: React.FC = () => {
       state: { 
         orderItems,
         shopId,
-        visitId,
+        visitId, // This can be undefined for editing without a visit
         shopName,
         totalValue,
-        products
+        products,
+        isEditing,
+        orderToEdit
       } 
     });
   };
@@ -143,7 +161,7 @@ const PlaceOrderPage: React.FC = () => {
           <ArrowLeft size={24} />
         </button>
         
-        <h1 className="text-xl font-bold">Place Order</h1>
+        <h1 className="text-xl font-bold">{isEditing ? 'Edit Order' : 'Place Order'}</h1>
         
         <button 
           onClick={handleLogout}
@@ -163,7 +181,9 @@ const PlaceOrderPage: React.FC = () => {
         />
         
         {/* Popular Products Title with Shop Name */}
-        <h2 className="text-xl font-bold mb-4">Popular Products - {shopName || 'Shop'}</h2>
+        <h2 className="text-xl font-bold mb-4">
+          {isEditing ? 'Edit Order for ' : 'Popular Products - '}{shopName || 'Shop'}
+        </h2>
         
         {/* Loading state */}
         {loading ? (

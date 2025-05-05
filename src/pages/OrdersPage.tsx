@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Search, Plus, CheckCircle, MapPin, Gift, X } from 'lucide-react';
+import { ArrowLeft, Search, Plus, CheckCircle, MapPin, Gift, X, History } from 'lucide-react';
 import BottomNavigation from '../components/BottomNavigation';
 import { useNearbyShops, Shop as NearbyShop } from '../hooks/useNearbyShops';
 import ShopSelector from '../components/orders/ShopSelector';
@@ -172,24 +172,41 @@ const OrdersPage: React.FC = () => {
   };
   
   // Handle creating a new order
-  const handleCreateOrder = () => {
-    if (!selectedShop) return;
-    
+  const handleNewOrder = (shopId: string, shopName: string) => {
     // Find the visit for this shop
-    const shopVisit = visitedShops.find(visit => visit.shop_id === selectedShop.shop_id);
+    const shopVisit = visitedShops.find(visit => visit.shop_id === shopId);
     
     if (shopVisit) {
       // Navigate to place order page with shop and visit info
-      navigate(`/shops/${selectedShop.shop_id}/order`, {
+      navigate(`/shops/${shopId}/order`, {
         state: {
           visitId: shopVisit.visit_id,
-          shopName: selectedShop.name
+          shopName: shopName
         }
       });
     } else {
       // If no visit found, redirect to shop visit page first
-      navigate(`/shops/${selectedShop.shop_id}/visit`);
+      navigate(`/shops/${shopId}/visit`);
     }
+  };
+
+  // Handle viewing order history
+  const handleViewHistory = (shopId: string, shopName: string) => {
+    handleSelectShop(shopId, shopName);
+  };
+  
+  // Handle editing an existing order
+  const handleEditOrder = (order: Order) => {
+    if (!selectedShop) return;
+    
+    // Navigate to place order page with shop and order info
+    navigate(`/shops/${selectedShop.shop_id}/order`, {
+      state: {
+        shopName: selectedShop.name,
+        orderToEdit: order,
+        isEditing: true
+      }
+    });
   };
   
   // Handle search
@@ -235,14 +252,12 @@ const OrdersPage: React.FC = () => {
         {/* Show different content based on whether a shop is selected */}
         {selectedShopId && selectedShop ? (
           <>
-            <ShopHeader 
-              shopName={selectedShop.name} 
-              onCreateOrder={handleCreateOrder} 
-            />
+            <ShopHeader shopName={selectedShop.name} />
             <ShopOrdersList 
               orders={shopOrders} 
               loading={ordersLoading}
               onOpenOrderDetails={handleOpenOrderDetails}
+              onEditOrder={handleEditOrder}
             />
           </>
         ) : (
@@ -254,6 +269,8 @@ const OrdersPage: React.FC = () => {
             visitedShops={visitedShops}
             nearbyShops={nearbyShops}
             onSelectShop={handleSelectShop}
+            onNewOrder={handleNewOrder}
+            onViewHistory={handleViewHistory}
             loading={loading}
             nearbyShopsLoading={nearbyShopsLoading}
           />

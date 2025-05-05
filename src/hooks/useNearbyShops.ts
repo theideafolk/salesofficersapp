@@ -31,6 +31,7 @@ const CACHE_EXPIRY = 5 * 60 * 1000;
 
 // Cache keys
 const SHOPS_CACHE_KEY = 'cached_nearby_shops';
+const SEARCH_CACHE_KEY = 'cached_search_shops';
 
 /**
  * Custom hook for fetching and managing nearby shops
@@ -47,6 +48,10 @@ export const useNearbyShops = (
   const [nearbyShops, setNearbyShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // New state for search results
+  const [searchResults, setSearchResults] = useState<Shop[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Load cached data immediately to show something while fetching fresh data
   const loadCachedData = useCallback(() => {
@@ -69,14 +74,14 @@ export const useNearbyShops = (
   }, []);
 
   // Save data to cache
-  const saveToCache = useCallback((data: any, userLoc?: { lat: number; lng: number }) => {
+  const saveToCache = useCallback((data: any, cacheKey: string, userLoc?: { lat: number; lng: number }) => {
     try {
       const cacheItem: CacheItem<any> = {
         timestamp: Date.now(),
         data: data,
         location: userLoc
       };
-      localStorage.setItem(SHOPS_CACHE_KEY, JSON.stringify(cacheItem));
+      localStorage.setItem(cacheKey, JSON.stringify(cacheItem));
     } catch (err) {
       console.error('Error saving to cache:', err);
       // Continue even if caching fails
@@ -158,7 +163,7 @@ export const useNearbyShops = (
         setNearbyShops(formattedShops);
         
         // Cache the results with the current location
-        saveToCache(formattedShops, userLocation);
+        saveToCache(formattedShops, SHOPS_CACHE_KEY, userLocation);
       } else {
         setNearbyShops([]);
       }
@@ -209,7 +214,7 @@ export const useNearbyShops = (
         
         // Cache the processed shops
         if (userLocation) {
-          saveToCache(updatedShops, userLocation);
+          saveToCache(updatedShops, SHOPS_CACHE_KEY, userLocation);
         }
       } else {
         setNearbyShops(shops);
@@ -291,7 +296,7 @@ export const useNearbyShops = (
         await processShops(closestShops);
         
         // Cache results
-        saveToCache(nearbyShops, userLocation);
+        saveToCache(nearbyShops, SHOPS_CACHE_KEY, userLocation);
       } else {
         setNearbyShops([]);
         setLoading(false);
@@ -345,22 +350,127 @@ export const useNearbyShops = (
     }
   }, [userLocation, userId, loadCachedData, calculateDistance, fetchFreshShopData]);
 
-  // Filter shops based on search term
-  const filteredShops = searchTerm 
+  // New function to search all shops regardless of location
+  const searchAllShops = useCallback(async (term: string) => {
+    if (!term || term.length < 2 || !userId) return;
+    
+    try {
+      setSearchLoading(true);
+      
+      // Check if we have results in cache
+      try {
+        const cachedSearchJSON = localStorage.getItem(SEARCH_CACHE_KEY);
+        if (cachedSearchJSON) {
+          const cachedSearch: CacheItem<{ term: string, shops: Shop[] }> = JSON.parse(cachedSearchJSON);
+          
+          // If cache is valid and search term is the same, use cached results
+          if (
+            Date.now() - cachedSearch.timestamp < CACHE_EXPIRY && 
+            cachedSearch.data.term.toLowerCase() === term.toLowerCase()
+          ) {
+            setSearchResults(cachedSearch.data.shops);
+            setSearchLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error loading cached search data:', err);
+        // Continue with the search even if cache fails
+      }
+      
+      // Perform the search with ilike for partial matches
+      const { data: allShops, error: searchError } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('is_deleted', false)
+        .or(`name.ilike.%${term}%,address.ilike.%${term}%,owner_name.ilike.%${term}%,phone_number.ilike.%${term}%`)
+        .limit(20); // Limit to 20 results for performance
+        
+      if (searchError) {
+        console.error('Error searching shops:', searchError);
+        setSearchResults([]);
+        setSearchLoading(false);
+        return;
+      }
+      
+      if (allShops && allShops.length > 0) {
+        // Process shops to add last visit dates if needed
+        const { data: visitData, error: visitError } = await supabase
+          .from('visits')
+          .select('shop_id, visit_time')
+          .eq('sales_officer_id', userId)
+          .in('shop_id', allShops.map(shop => shop.shop_id))
+          .eq('is_deleted', false)
+          .order('visit_time', { ascending: false });
+          
+        let processedShops: Shop[] = [...allShops];
+        
+        if (!visitError && visitData) {
+          // Create a map of shop_id to latest visit date
+          const lastVisitMap = visitData.reduce((map, visit) => {
+            if (!map[visit.shop_id]) {
+              map[visit.shop_id] = visit.visit_time;
+            }
+            return map;
+          }, {} as Record<string, string>);
+          
+          // Update shops with last visit date
+          processedShops = allShops.map(shop => ({
+            ...shop,
+            last_visit_date: lastVisitMap[shop.shop_id] || null
+          }));
+        }
+        
+        setSearchResults(processedShops);
+        
+        // Cache the search results
+        saveToCache({
+          term: term,
+          shops: processedShops
+        }, SEARCH_CACHE_KEY);
+        
+      } else {
+        setSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Error searching all shops:', err);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [userId, saveToCache]);
+
+  // Filter nearby shops based on search term if search is not active
+  const filteredNearbyShops = searchTerm.length < 2
     ? nearbyShops.filter(shop => {
         const lowerSearchTerm = searchTerm.toLowerCase();
         return (
           shop.name.toLowerCase().includes(lowerSearchTerm) ||
-          shop.address.toLowerCase().includes(lowerSearchTerm) ||
+          (shop.address && shop.address.toLowerCase().includes(lowerSearchTerm)) ||
           (shop.owner_name && shop.owner_name.toLowerCase().includes(lowerSearchTerm)) ||
           (shop.phone_number && shop.phone_number.toLowerCase().includes(lowerSearchTerm))
         );
       })
-    : nearbyShops;
+    : searchResults;
+
+  // Handle changes to searchTerm
+  useEffect(() => {
+    if (searchTerm.length >= 2) {
+      // Debounce the search to avoid too many requests
+      const debounceTimeout = setTimeout(() => {
+        searchAllShops(searchTerm);
+      }, 500);
+      
+      return () => clearTimeout(debounceTimeout);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchTerm, searchAllShops]);
 
   return { 
-    shops: filteredShops, 
-    loading, 
-    error 
+    shops: filteredNearbyShops, 
+    loading: searchTerm.length >= 2 ? searchLoading : loading, 
+    error,
+    searchAllShops
   };
 };

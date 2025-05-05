@@ -15,13 +15,23 @@ interface LocationState {
   shopName: string;
   totalValue: number;
   products: Product[];
+  isEditing?: boolean;
+  orderToEdit?: any;
 }
 
 const ReviewOrderPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { orderItems: initialOrderItems, shopId, visitId, shopName, products = [] } = location.state as LocationState;
+  const { 
+    orderItems: initialOrderItems, 
+    shopId, 
+    visitId, 
+    shopName, 
+    products = [],
+    isEditing = false,
+    orderToEdit
+  } = location.state as LocationState;
   
   // State variables
   const [orderItems, setOrderItems] = useState<OrderItem[]>(initialOrderItems);
@@ -264,15 +274,17 @@ const ReviewOrderPage: React.FC = () => {
       state: { 
         visitId, 
         shopName,
-        orderItems
+        orderItems,
+        isEditing,
+        orderToEdit
       },
       replace: true 
     });
   };
   
-  // Handle placing the order
+  // Handle placing or updating the order
   const handlePlaceOrder = async () => {
-    if (!visitId || !shopId || regularItems.length === 0) {
+    if (!shopId || regularItems.length === 0) {
       setError('Missing required information to place order');
       return;
     }
@@ -281,63 +293,156 @@ const ReviewOrderPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Generate a single order_id for this order
-      const order_id = crypto.randomUUID();
+      // Determine if we're creating a new order or updating an existing one
+      const order_id = isEditing && orderToEdit ? orderToEdit.order_id : crypto.randomUUID();
       
-      // Insert orders for regular items
-      const orderInserts = regularItems.map(item => {
-        // Find free item related to this regular item
-        const relatedFreeItems = orderItems.filter(
-          oi => oi.is_free && oi.free_gift_for === item.product_id
-        );
-
-        // Determine if there's a free quantity of the same product
-        const freeQtyItem = relatedFreeItems.find(
-          oi => oi.product_id === item.product_id && oi.free_qty
-        );
-
-        // Determine if there's a free product
-        const freeProductItem = relatedFreeItems.find(
-          oi => oi.product_id !== item.product_id && oi.free_product_id
-        );
-
-        return {
-          order_id: order_id, // Use the same order_id for all items
-          visit_id: visitId,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          amount: item.amount,
-          free_qty: freeQtyItem?.free_qty || 0,
-          free_product_id: freeProductItem?.product_id || null,
-          scheme_id: freeQtyItem?.scheme_id || freeProductItem?.scheme_id || null
-        };
-      });
+      // Store the visit_id for use in new inserts
+      let existingVisitId: string | undefined;
       
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(orderInserts)
-        .select();
+      // If editing an existing order, delete the existing items first
+      if (isEditing && orderToEdit) {
+        console.log('Updating existing order:', order_id);
         
-      if (error) {
-        throw error;
+        // Get the visit_id from the existing order before deleting
+        const { data: existingOrders, error: fetchError } = await supabase
+          .from('orders')
+          .select('visit_id')
+          .eq('order_id', order_id)
+          .limit(1);
+          
+        if (fetchError) {
+          console.error('Error fetching existing order:', fetchError);
+          throw new Error(`Failed to fetch existing order: ${fetchError.message}`);
+        }
+        
+        // Store the visit_id for use in new inserts
+        existingVisitId = existingOrders?.[0]?.visit_id;
+        
+        // Delete existing order items
+        const { error: deleteError } = await supabase
+          .from('orders')
+          .delete()
+          .eq('order_id', order_id);
+          
+        if (deleteError) {
+          console.error('Error deleting existing order items:', deleteError);
+          throw new Error(`Failed to update order: ${deleteError.message}`);
+        }
+        
+        // Add a delay to ensure the delete operation completes
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log('Successfully deleted existing order items, now inserting new items');
+      }
+
+      // Ensure we have a valid visit_id
+      // For existing orders, always use the existing visit_id
+      // For new orders, use the current visitId
+      const finalVisitId = isEditing ? existingVisitId : visitId;
+      
+      if (!finalVisitId) {
+        console.error('No valid visit_id available:', { 
+          isEditing, 
+          existingVisitId, 
+          currentVisitId: visitId 
+        });
+        throw new Error('No valid visit_id available for the order');
+      }
+
+      console.log('Using visit_id:', finalVisitId, 'for order:', order_id);
+
+      // Prepare order items for insertion
+      const orderInserts = regularItems.map(item => ({
+        order_id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        amount: item.amount,
+        visit_id: finalVisitId, // Use the validated visit_id
+        currency: 'INR',
+        created_at: new Date().toISOString(),
+        is_deleted: false,
+        free_qty: item.free_qty || 0,
+        free_product_id: item.free_product_id || null,
+        scheme_id: item.scheme_id || null
+      }));
+      
+      console.log('Inserting order items:', orderInserts);
+      
+      // For editing orders, use UPSERT to avoid duplicate key violations
+      if (isEditing) {
+        // Use upsert with ON CONFLICT DO UPDATE to handle existing records
+        const { data, error } = await supabase
+          .from('orders')
+          .upsert(orderInserts, { 
+            onConflict: 'order_id,product_id',
+            ignoreDuplicates: false
+          })
+          .select();
+          
+        if (error) {
+          console.error('Error upserting order items:', error);
+          throw error;
+        }
+      } else {
+        // For new orders, process items one by one to avoid conflicts
+        for (const item of orderInserts) {
+          // Check if this order_id + product_id combination already exists
+          const { data: existingOrder, error: checkError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('order_id', item.order_id)
+            .eq('product_id', item.product_id)
+            .single();
+            
+          if (checkError && checkError.code !== 'PGRST116') {
+            // If error is not "no rows returned", it's a real error
+            console.error('Error checking existing order:', checkError);
+            throw checkError;
+          }
+          
+          if (existingOrder) {
+            // Update existing order
+            const { error: updateError } = await supabase
+              .from('orders')
+              .update(item)
+              .eq('order_id', item.order_id)
+              .eq('product_id', item.product_id);
+              
+            if (updateError) {
+              console.error('Error updating order item:', updateError);
+              throw updateError;
+            }
+          } else {
+            // Insert new order
+            const { error: insertError } = await supabase
+              .from('orders')
+              .insert(item);
+              
+            if (insertError) {
+              console.error('Error inserting order item:', insertError);
+              throw insertError;
+            }
+          }
+        }
       }
 
       // Order placed successfully
       setSuccess(true);
+      console.log('Order ' + (isEditing ? 'updated' : 'placed') + ' successfully');
       
       // Show success for 2 seconds then navigate
       setTimeout(() => {
         navigate('/orders', { 
           state: { 
             success: true, 
-            message: 'Order placed successfully' 
+            message: isEditing ? 'Order updated successfully' : 'Order placed successfully' 
           } 
         });
       }, 2000);
       
     } catch (err) {
       console.error('Error placing order:', err);
-      setError('Failed to place order. Please try again.');
+      setError(isEditing ? 'Failed to update order. Please try again.' : 'Failed to place order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -368,7 +473,7 @@ const ReviewOrderPage: React.FC = () => {
         
         {success && (
           <div className="my-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md text-center">
-            <div className="font-bold">Order placed successfully</div>
+            <div className="font-bold">{isEditing ? 'Order updated successfully' : 'Order placed successfully'}</div>
             <p>Redirecting to orders page...</p>
           </div>
         )}
@@ -499,7 +604,7 @@ const ReviewOrderPage: React.FC = () => {
               Processing...
             </>
           ) : (
-            'Confirm Order'
+            isEditing ? 'Update Order' : 'Confirm Order'
           )}
         </button>
       </main>
