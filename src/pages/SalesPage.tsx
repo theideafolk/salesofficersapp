@@ -429,7 +429,7 @@ const SalesPage: React.FC = () => {
                 <option value="This Month">This Month</option>
               </select>
             </div>
-            <div className="absolute left-0 right-0 flex justify-center pointer-events-none">
+            <div className="absolute right-0 flex justify-end w-full pointer-events-none">
               <span className="text-sm text-gray-500 font-bold">{getPeriodDateString()}</span>
             </div>
           </div>
