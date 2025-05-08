@@ -436,7 +436,7 @@ const SalesPage: React.FC = () => {
           {/* Bar Chart with Swipe Navigation */}
           <div>
             <div
-              className="flex items-end gap-8 justify-start w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 snap-x snap-mandatory"
+              className="flex items-end gap-6 justify-start w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 snap-x snap-mandatory"
               style={{ minHeight: '7rem', paddingBottom: 8 }}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
