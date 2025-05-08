@@ -116,6 +116,11 @@ const ShopsPage: React.FC = () => {
   // Calculate remaining shops to visit
   const remainingVisits = TARGET_SHOPS_PER_DAY - recentVisits.length;
 
+  // Simplified: Only check if shop_id exists in today's recentVisits
+  const isShopVisitedToday = useCallback((shopId: string) => {
+    return recentVisits.some(visit => visit.shop_id === shopId);
+  }, [recentVisits]);
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header with Logout */}
@@ -282,6 +287,8 @@ const ShopsPage: React.FC = () => {
                     shop={shop}
                     onVisit={handleVisitShop}
                     canVisit={canPerformActions && !checkingStatus}
+                    isVisitedToday={isShopVisitedToday(shop.shop_id)}
+                    isOnBreak={isOnBreak}
                   />
                 ))}
               </div>

@@ -666,12 +666,20 @@ const ShopVisitPage: React.FC = () => {
               </div>
               
               {/* Action Button */}
+              <div className="flex flex-row gap-2">
               <button
                 onClick={handlePlaceOrder}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-lg text-xl"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-lg text-base"
               >
                 Place Order
               </button>
+                <button
+                  onClick={handleReturnToShops}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded-lg text-base"
+                >
+                  Entry Denied
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Search, Plus, CheckCircle, MapPin, Gift, X, History } from 'lucide-react';
+import { ArrowLeft, Search, Plus, CheckCircle, MapPin, Gift, X, History, AlertCircle } from 'lucide-react';
 import BottomNavigation from '../components/BottomNavigation';
 import { useNearbyShops, Shop as NearbyShop } from '../hooks/useNearbyShops';
 import ShopSelector from '../components/orders/ShopSelector';
@@ -13,6 +13,7 @@ import OrderDetailsModal from '../components/orders/OrderDetailsModal';
 import useShopOrders, { Order } from '../hooks/useShopOrders';
 import useShopDetails, { Shop } from '../hooks/useShopDetails';
 import { formatLastVisitDate } from '../utils/shopHelpers';
+import { useWorkStatus } from '../hooks/useWorkStatus';
 
 interface VisitedShop {
   visit_id: string;
@@ -26,12 +27,16 @@ const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const locationState = useLocation();
   
+  // Get work status
+  const { dayStarted, isOnBreak } = useWorkStatus(user?.id);
+  
   // State
   const [activeTab, setActiveTab] = useState<'visited' | 'nearby'>('visited');
   const [searchTerm, setSearchTerm] = useState('');
   const [visitedShops, setVisitedShops] = useState<VisitedShop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [isOrderDetailsModalOpen, setIsOrderDetailsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -39,8 +44,6 @@ const OrdersPage: React.FC = () => {
   // Custom hooks
   const { shops: nearbyShops, loading: nearbyShopsLoading } = 
     useNearbyShops(userLocation, user?.id, searchTerm);
-  
-  const { shop: selectedShop, setShop: setSelectedShop } = useShopDetails(selectedShopId);
   
   const { orders: shopOrders, loading: ordersLoading } = useShopOrders(selectedShopId);
 
@@ -230,6 +233,9 @@ const OrdersPage: React.FC = () => {
     }
   };
 
+  // Determine if user can place orders
+  const canPlaceOrder = dayStarted && !isOnBreak;
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -246,9 +252,14 @@ const OrdersPage: React.FC = () => {
           {selectedShopId ? 'Past Orders' : 'Select a Shop'}
         </h1>
       </header>
-      
-      {/* Main Content */}
       <main className="flex-grow px-4 pb-20 pt-4">
+        {/* Show break message if on break */}
+        {isOnBreak && (
+          <div className="mb-4 w-full p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded-md flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            You are currently on break. New Orders feature is disabled
+          </div>
+        )}
         {/* Show different content based on whether a shop is selected */}
         {selectedShopId && selectedShop ? (
           <>
@@ -273,10 +284,10 @@ const OrdersPage: React.FC = () => {
             onViewHistory={handleViewHistory}
             loading={loading}
             nearbyShopsLoading={nearbyShopsLoading}
+            canPlaceOrder={canPlaceOrder}
           />
         )}
       </main>
-      
       {/* Order Details Modal */}
       <OrderDetailsModal
         isOpen={isOrderDetailsModalOpen}
@@ -284,7 +295,6 @@ const OrdersPage: React.FC = () => {
         order={selectedOrder}
         shop={selectedShop}
       />
-      
       {/* Bottom Navigation */}
       <BottomNavigation />
     </div>

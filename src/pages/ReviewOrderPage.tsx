@@ -340,13 +340,14 @@ const ReviewOrderPage: React.FC = () => {
       // For new orders, use the current visitId
       const finalVisitId = isEditing ? existingVisitId : visitId;
       
-      if (!finalVisitId) {
-        console.error('No valid visit_id available:', { 
+      if (!finalVisitId || !user) {
+        console.error('No valid visit_id or user available:', { 
           isEditing, 
           existingVisitId, 
-          currentVisitId: visitId 
+          currentVisitId: visitId, 
+          user 
         });
-        throw new Error('No valid visit_id available for the order');
+        throw new Error('No valid visit_id or user available for the order');
       }
 
       console.log('Using visit_id:', finalVisitId, 'for order:', order_id);
@@ -363,7 +364,8 @@ const ReviewOrderPage: React.FC = () => {
         is_deleted: false,
         free_qty: item.free_qty || 0,
         free_product_id: item.free_product_id || null,
-        scheme_id: item.scheme_id || null
+        scheme_id: item.scheme_id || null,
+        sales_officers_id: user.id // Add the sales_officers_id field
       }));
       
       console.log('Inserting order items:', orderInserts);

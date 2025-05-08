@@ -32,6 +32,7 @@ interface ShopSelectorProps {
   nearbyShopsLoading: boolean;
   onNewOrder?: (shopId: string, shopName: string) => void;
   onViewHistory?: (shopId: string, shopName: string) => void;
+  canPlaceOrder?: boolean;
 }
 
 const ShopSelector: React.FC<ShopSelectorProps> = ({
@@ -45,7 +46,8 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
   loading,
   nearbyShopsLoading,
   onNewOrder,
-  onViewHistory
+  onViewHistory,
+  canPlaceOrder = true
 }) => {
   // Filter shops based on search term
   const filteredVisitedShops = searchTerm 
@@ -116,8 +118,13 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                   <div className="flex space-x-2">
                     <button
                       onClick={() => onNewOrder ? onNewOrder(shop.shop_id, shop.shop_name) : onSelectShop(shop.shop_id, shop.shop_name)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg"
+                      className={`${
+                        canPlaceOrder 
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                          : 'bg-blue-300 text-white cursor-not-allowed'
+                      } font-medium py-3 px-4 rounded-lg`}
                       aria-label="New Order"
+                      disabled={!canPlaceOrder}
                     >
                       <Plus size={20} />
                     </button>
@@ -164,8 +171,13 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                   <div className="flex space-x-2">
                     <button
                       onClick={() => onNewOrder ? onNewOrder(shop.shop_id, shop.name) : onSelectShop(shop.shop_id, shop.name)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg"
+                      className={`${
+                        canPlaceOrder 
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      } font-medium py-3 px-4 rounded-lg`}
                       aria-label="New Order"
+                      disabled={!canPlaceOrder}
                     >
                       <Plus size={20} />
                     </button>

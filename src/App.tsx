@@ -10,9 +10,9 @@ import AddShopPage from './pages/AddShopPage';
 import PlaceOrderPage from './pages/PlaceOrderPage';
 import ReviewOrderPage from './pages/ReviewOrderPage';
 import OrdersPage from './pages/OrdersPage';
+import SalesPage from './pages/SalesPage';
 
 // Basic placeholder components for new routes
-const SalesPage = () => <div className="p-4 pt-16 pb-20">Sales Page - Coming Soon</div>;
 const ProfilePage = () => <div className="p-4 pt-16 pb-20">Profile Page - Coming Soon</div>;
 
 // Protected route component

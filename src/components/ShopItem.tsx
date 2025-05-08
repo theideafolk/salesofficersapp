@@ -1,5 +1,5 @@
 // Shop item component for displaying shop details in a list
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { MapPin, User, Phone } from 'lucide-react';
 import { getMapUrl, getPhoneUrl, isMobile, formatLastVisitDate, truncateText } from '../utils/shopHelpers';
 
@@ -24,12 +24,29 @@ interface ShopItemProps {
   shop: Shop;
   onVisit: (shopId: string) => void;
   canVisit: boolean;
+  isVisitedToday?: boolean;
+  isOnBreak?: boolean;
 }
 
-const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit }) => {
+const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit, isVisitedToday = false, isOnBreak = false }) => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   const handleVisitClick = useCallback(() => {
+    if (isVisitedToday) {
+      setShowConfirmModal(true);
+    } else {
+      onVisit(shop.shop_id);
+    }
+  }, [shop.shop_id, onVisit, isVisitedToday]);
+
+  const handleConfirmVisit = () => {
+    setShowConfirmModal(false);
     onVisit(shop.shop_id);
-  }, [shop.shop_id, onVisit]);
+  };
+
+  const handleCancelVisit = () => {
+    setShowConfirmModal(false);
+  };
 
   // Generate map URL when component renders
   const mapUrl = shop.gps_location ? getMapUrl(shop.gps_location) : '';
@@ -113,17 +130,46 @@ const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit }) => {
             </div>
           )}
         </div>
-        <button
-          onClick={handleVisitClick}
-          className={`${
-            canVisit
-              ? 'bg-green-500 hover:bg-green-600'
-              : 'bg-green-300 cursor-not-allowed'
-          } text-white font-medium py-3 px-8 rounded-lg text-base`}
-          disabled={!canVisit}
-        >
-          Visit
-        </button>
+        <div className="relative">
+          <button
+            onClick={handleVisitClick}
+            className={`${
+              isVisitedToday
+                ? (isOnBreak ? 'bg-green-300 text-white cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white')
+                : canVisit && !isOnBreak
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-blue-300 text-white cursor-not-allowed'
+            } text-base font-medium py-3 px-8 rounded-lg transition-colors duration-200 whitespace-nowrap`}
+            style={isVisitedToday ? { pointerEvents: 'auto' } : {}}
+            disabled={isOnBreak || !canVisit}
+          >
+            Visit
+          </button>
+          {/* Confirmation Modal */}
+          {showConfirmModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-lg p-6 max-w-xs w-full text-center">
+                <div className="mb-4 text-lg font-semibold text-gray-800">
+                  You have already visited the shop today.<br/>Do you want to visit the shop again?
+                </div>
+                <div className="flex justify-center gap-4 mt-4">
+                  <button
+                    onClick={handleConfirmVisit}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={handleCancelVisit}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
