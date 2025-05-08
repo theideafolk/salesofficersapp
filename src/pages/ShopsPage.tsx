@@ -8,7 +8,7 @@ import RecentVisitItem from '../components/RecentVisitItem';
 import { useNearbyShops } from '../hooks/useNearbyShops';
 import { useRecentVisits } from '../hooks/useRecentVisits';
 import { useWorkStatus } from '../hooks/useWorkStatus';
-import { Search, Plus, AlertCircle, Menu, LogOut, Clock, CheckCircle, X } from 'lucide-react';
+import { Search, Plus, AlertCircle, LogOut, Clock, CheckCircle, X } from 'lucide-react';
 
 // Target number of shops to visit per day
 const TARGET_SHOPS_PER_DAY = 25;
@@ -23,7 +23,6 @@ const ShopsPage: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   
   // Use custom hooks
   const { dayStarted, dayEnded, isOnBreak, checkingStatus } = useWorkStatus(user?.id);
@@ -82,16 +81,6 @@ const ShopsPage: React.FC = () => {
     navigate('/shops/new');
   }, [navigate]);
   
-  // Toggle menu function
-  const handleToggleMenu = useCallback(() => {
-    setMenuOpen(prevState => !prevState);
-  }, []);
-  
-  // Close menu when clicking outside
-  const handleOutsideClick = useCallback(() => {
-    setMenuOpen(false);
-  }, []);
-  
   // Handle logout
   const handleLogout = useCallback(async () => {
     await signOut();
@@ -124,65 +113,12 @@ const ShopsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header with Logout */}
-      <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm">
-        <button 
-          className="text-gray-800 focus:outline-none"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          onClick={handleToggleMenu}
-        >
-          {menuOpen ? <Menu size={24} /> : <Menu size={24} />}
-        </button>
-        
-        <h1 className="text-xl font-bold">Visit Shop</h1>
-        
-        <button 
-          onClick={handleLogout}
-          className="text-gray-800 focus:outline-none"
-          aria-label="Logout"
-        >
-          <LogOut size={24} />
-        </button>
-      </header>
-      
-      {/* Side Menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-20" onClick={handleOutsideClick}>
-          <div 
-            className="bg-white h-full w-3/4 max-w-xs p-5 flex flex-col"
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on menu content
-          >
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold">Menu</h2>
-              <button 
-                onClick={handleToggleMenu} 
-                className="text-gray-500 hover:text-gray-700"
-                aria-label="Close menu"
-              >
-                <Menu size={24} />
-              </button>
-            </div>
-            
-            <div className="flex-grow">
-              <button 
-                onClick={handleAddNewShop}
-                className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left flex items-center"
-                disabled={!canPerformActions || checkingStatus}
-              >
-                <Plus size={20} className="mr-2" />
-                Add New Shop
-              </button>
-              
-              <button 
-                onClick={handleLogout}
-                className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left flex items-center"
-              >
-                <LogOut size={20} className="mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
+      <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
+        <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-xl font-bold">Visit Shop</h1>
         </div>
-      )}
+      </header>
       
       {/* Main Content */}
       <main className="flex-grow px-4 pb-20 pt-4">

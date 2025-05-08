@@ -239,18 +239,13 @@ const OrdersPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="flex items-center py-4 px-4 bg-white shadow-sm">
-        <button 
-          onClick={handleBack}
-          className="text-gray-800 focus:outline-none mr-3"
-          aria-label="Back"
-        >
-          <ArrowLeft size={24} />
-        </button>
-        
-        <h1 className="text-xl font-bold">
-          {selectedShopId ? 'Past Orders' : 'Select a Shop'}
-        </h1>
+      <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
+        <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-xl font-bold">
+            {selectedShopId ? 'Past Orders' : 'Orders'}
+          </h1>
+        </div>
       </header>
       <main className="flex-grow px-4 pb-20 pt-4">
         {/* Show break message if on break */}

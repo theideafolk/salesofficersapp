@@ -11,9 +11,7 @@ import PlaceOrderPage from './pages/PlaceOrderPage';
 import ReviewOrderPage from './pages/ReviewOrderPage';
 import OrdersPage from './pages/OrdersPage';
 import SalesPage from './pages/SalesPage';
-
-// Basic placeholder components for new routes
-const ProfilePage = () => <div className="p-4 pt-16 pb-20">Profile Page - Coming Soon</div>;
+import ProfilePage from './pages/ProfilePage';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

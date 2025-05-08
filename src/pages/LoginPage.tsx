@@ -24,10 +24,8 @@ const LoginPage: React.FC = () => {
       
       <div className="text-center mb-6">
         <div className="flex justify-center">
-          <StoreIcon className="h-16 w-16 text-blue-600" />
+          <img src="/assets/Benzorgo_revised_logo.png" alt="Benzorgo Logo" className="h-60 w-auto" />
         </div>
-        <h1 className="text-3xl font-bold text-gray-800 mt-2">Sales Officer App</h1>
-        <p className="text-gray-600">Track your daily sales targets</p>
       </div>
       
       <LoginForm />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import BottomNavigation from '../components/BottomNavigation';
-import { User, ShoppingBag, CreditCard, ChevronLeft, ChevronRight, Menu, LogOut } from 'lucide-react';
+import { User, ShoppingBag, CreditCard, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import OrderDetailsModal from '../components/orders/OrderDetailsModal';
 import SideMenu from '../components/home/SideMenu';
 import DeleteAccountModal from '../components/DeleteAccountModal';
@@ -52,8 +52,6 @@ const SalesPage: React.FC = () => {
   // Touch state for swipe
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
-  // Side menu and delete modal state
-  const [menuOpen, setMenuOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   React.useEffect(() => {
@@ -370,9 +368,7 @@ const SalesPage: React.FC = () => {
     return '';
   };
 
-  // Handlers for menu and logout
-  const handleToggleMenu = () => setMenuOpen(prev => !prev);
-  const handleOutsideClick = () => setMenuOpen(false);
+  // Handlers for logout
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
@@ -383,37 +379,13 @@ const SalesPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
-      {/* Header with Hamburger, Title, Logout */}
+      {/* Header with Centered Title and Logout */}
       <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
-        <button 
-          className="text-gray-800 focus:outline-none"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          onClick={handleToggleMenu}
-        >
-          <Menu size={24} />
-        </button>
-        <h1 className="text-2xl font-bold absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 m-0">My Sales</h1>
-        <button 
-          onClick={handleSignOut}
-          className="text-gray-800 focus:outline-none"
-          aria-label="Logout"
-        >
-          <LogOut size={24} />
-        </button>
+        <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-xl font-bold">My Sales</h1>
+        </div>
       </header>
-      {/* Side Menu */}
-      <SideMenu
-        isOpen={menuOpen}
-        onClose={handleOutsideClick}
-        onLogout={handleSignOut}
-        onDeleteAccount={() => setIsDeleteModalOpen(true)}
-      />
-      {/* Delete Account Modal */}
-      <DeleteAccountModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onSuccess={handleDeleteSuccess}
-      />
       <main className="flex-grow p-4 pb-24">
         {/* Bar Chart and Date Filter */}
         <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm">
@@ -525,6 +497,12 @@ const SalesPage: React.FC = () => {
         onClose={() => setIsOrderDetailsModalOpen(false)}
         order={selectedOrder}
         shop={selectedShop}
+      />
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onSuccess={handleDeleteSuccess}
       />
     </div>
   );

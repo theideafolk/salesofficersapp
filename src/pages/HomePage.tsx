@@ -1,15 +1,14 @@
 // Home page component with mobile-friendly design
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, LogOut } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 // Components
-import AppHeader from '../components/AppHeader';
 import BottomNavigation from '../components/BottomNavigation';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import ConfirmEndDayModal from '../components/ConfirmEndDayModal';
-import SideMenu from '../components/home/SideMenu';
 import DayStartedView from '../components/home/DayStartedView';
 import DayEndedView from '../components/home/DayEndedView';
 import StartDayView from '../components/home/StartDayView';
@@ -31,7 +30,9 @@ const HomePage: React.FC = () => {
   // UI state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEndDayModalOpen, setIsEndDayModalOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [todayStats, setTodayStats] = useState({ visits: 0, uniqueShops: 0 });
+  const [language, setLanguage] = useState<'en' | 'hi'>('en');
   
   // Custom hooks
   const username = useUserProfile(user);
@@ -46,7 +47,7 @@ const HomePage: React.FC = () => {
       startTime, 
       isOnBreak, 
       elapsedTime,
-      isLoading,
+      isLoading: workHoursLoading,
       isEndDayLoading,
       errorMessage
     },
@@ -76,16 +77,6 @@ const HomePage: React.FC = () => {
     navigate('/orders');
   };
   
-  // Toggle menu function
-  const handleToggleMenu = useCallback(() => {
-    setMenuOpen(prevState => !prevState);
-  }, []);
-
-  // Close menu when clicking outside of it
-  const handleOutsideClick = useCallback(() => {
-    setMenuOpen(false);
-  }, []);
-  
   // Handle end day confirmation
   const handleConfirmEndDay = () => {
     setIsEndDayModalOpen(true);
@@ -97,22 +88,68 @@ const HomePage: React.FC = () => {
     setIsEndDayModalOpen(false);
   };
 
+  const fetchTodayStats = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Fetch total visits for today
+      const { data: visitsData, error: visitsError } = await supabase
+        .from('visits')
+        .select('visit_id')
+        .eq('sales_officer_id', user.id)
+        .gte('created_at', today.toISOString());
+        
+      if (visitsError) throw visitsError;
+      
+      // Fetch unique shops visited today
+      const { data: uniqueShopsData, error: uniqueShopsError } = await supabase
+        .from('visits')
+        .select('shop_id')
+        .eq('sales_officer_id', user.id)
+        .gte('created_at', today.toISOString());
+        
+      if (uniqueShopsError) throw uniqueShopsError;
+      
+      // Count unique shops
+      const uniqueShops = new Set(uniqueShopsData?.map(visit => visit.shop_id) || []).size;
+      
+      setTodayStats({
+        visits: visitsData?.length || 0,
+        uniqueShops: uniqueShops
+      });
+    } catch (error) {
+      console.error('Error fetching today stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'hi' : 'en');
+  };
+
+  useEffect(() => {
+    fetchTodayStats();
+  }, [user]);
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* App Header */}
-      <AppHeader 
-        onToggleMenu={handleToggleMenu} 
-        menuOpen={menuOpen} 
-        onLogout={handleSignOut}
-      />
-      
-      {/* Side Menu */}
-      <SideMenu
-        isOpen={menuOpen}
-        onClose={handleOutsideClick}
-        onLogout={handleSignOut}
-        onDeleteAccount={() => setIsDeleteModalOpen(true)}
-      />
+      {/* Header with Language Toggle */}
+      <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
+        <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
+        <div className="flex-1 flex justify-center">
+          <button
+            className="text-gray-800 text-lg font-medium focus:outline-none"
+            onClick={toggleLanguage}
+          >
+            {language === 'en' ? 'EN | हिंदी' : 'हिंदी | EN'}
+          </button>
+        </div>
+      </header>
       
       {/* Main Content */}
       <main className="flex-grow px-4 pb-20 pt-2">
@@ -126,7 +163,7 @@ const HomePage: React.FC = () => {
           </div>
         )}
         
-        {isLoading ? (
+        {workHoursLoading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
           </div>
@@ -149,7 +186,7 @@ const HomePage: React.FC = () => {
             
             {/* Target Progress */}
             <TargetProgress
-              visitedShops={dailyStats.visitedShops}
+              visitedShops={todayStats.uniqueShops}
               totalShops={dailyStats.totalShops}
             />
             
