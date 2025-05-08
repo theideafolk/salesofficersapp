@@ -245,11 +245,6 @@ const ShopVisitPage: React.FC = () => {
     setNotes(e.target.value);
   };
   
-  // Toggle photo requirement
-  const togglePhotoRequired = () => {
-    setPhotoRequired(!photoRequired);
-  };
-  
   // Format current time for display
   const formatTime = () => {
     const now = new Date();
@@ -283,8 +278,7 @@ const ShopVisitPage: React.FC = () => {
       return;
     }
     
-    // Validate photo requirement
-    if (photoRequired && !imageFile) {
+    if (!imageFile) {
       setError('Please capture a photo of the shop before confirming visit.');
       return;
     }
@@ -444,18 +438,6 @@ const ShopVisitPage: React.FC = () => {
                   <label className="text-gray-700 font-medium">
                     Take a Photo as Proof
                   </label>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="photoRequired"
-                      checked={photoRequired}
-                      onChange={togglePhotoRequired}
-                      className="mr-2 h-4 w-4 text-blue-600"
-                    />
-                    <label htmlFor="photoRequired" className="text-sm text-gray-600">
-                      Required
-                    </label>
-                  </div>
                 </div>
                 
                 {imagePreview ? (
@@ -562,9 +544,9 @@ const ShopVisitPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                disabled={!userLocation || saving || (photoRequired && !imageFile)}
+                disabled={!userLocation || saving || !imageFile}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
-                  !userLocation || saving || (photoRequired && !imageFile) ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+                  !userLocation || saving || !imageFile ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
                 {saving ? (
