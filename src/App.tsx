@@ -4,12 +4,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
-
-// Basic placeholder components for new routes
-const ShopsPage = () => <div className="p-4 pt-16 pb-20">Shops Page - Coming Soon</div>;
-const OrdersPage = () => <div className="p-4 pt-16 pb-20">Orders Page - Coming Soon</div>;
-const SalesPage = () => <div className="p-4 pt-16 pb-20">Sales Page - Coming Soon</div>;
-const ProfilePage = () => <div className="p-4 pt-16 pb-20">Profile Page - Coming Soon</div>;
+import ShopsPage from './pages/ShopsPage';
+import ShopVisitPage from './pages/ShopVisitPage';
+import AddShopPage from './pages/AddShopPage';
+import PlaceOrderPage from './pages/PlaceOrderPage';
+import ReviewOrderPage from './pages/ReviewOrderPage';
+import OrdersPage from './pages/OrdersPage';
+import SalesPage from './pages/SalesPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -65,6 +67,26 @@ function AppRoutes() {
       <Route path="/shops" element={
         <ProtectedRoute>
           <ShopsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/shops/new" element={
+        <ProtectedRoute>
+          <AddShopPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/shops/:shopId/visit" element={
+        <ProtectedRoute>
+          <ShopVisitPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/shops/:shopId/order" element={
+        <ProtectedRoute>
+          <PlaceOrderPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/review-order" element={
+        <ProtectedRoute>
+          <ReviewOrderPage />
         </ProtectedRoute>
       } />
       <Route path="/orders" element={

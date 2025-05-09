@@ -1,106 +1,65 @@
 // Home page component with mobile-friendly design
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import BottomNavigation from '../components/BottomNavigation';
-import CircularButton from '../components/CircularButton';
-import ProgressBar from '../components/ProgressBar';
-import MainButton from '../components/MainButton';
-import AppHeader from '../components/AppHeader';
-import DeleteAccountModal from '../components/DeleteAccountModal';
+import { useAuth } from '../context/AuthContext';
+import { AlertTriangle, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { MapPin } from 'lucide-react';
+
+// Components
+import BottomNavigation from '../components/BottomNavigation';
+import DeleteAccountModal from '../components/DeleteAccountModal';
+import ConfirmEndDayModal from '../components/ConfirmEndDayModal';
+import DayStartedView from '../components/home/DayStartedView';
+import DayEndedView from '../components/home/DayEndedView';
+import StartDayView from '../components/home/StartDayView';
+import TargetProgress from '../components/home/TargetProgress';
+import DailySummary from '../components/home/DailySummary';
+import ActionButtons from '../components/home/ActionButtons';
+import LocationStatus from '../components/home/LocationStatus';
+
+// Custom hooks
+import { useWorkHours } from '../hooks/useWorkHours';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useDailyStats } from '../hooks/useDailyStats';
+import { useLocationStatus } from '../hooks/useLocationStatus';
 
 const HomePage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  
+  // UI state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [username, setUsername] = useState('');
-  const [dailyStats, setDailyStats] = useState({
-    visitedShops: 0,
-    totalShops: 25,
-    orders: 0,
-    sales: 0
-  });
-  const [locationEnabled, setLocationEnabled] = useState(false);
-
-  useEffect(() => {
-    // Get sales officer name
-    const fetchOfficerData = async () => {
-      if (user) {
-        const { data, error } = await supabase
-          .from('sales_officers')
-          .select('name')
-          .eq('sales_officers_id', user.id)
-          .single();
-          
-        if (data && !error) {
-          setUsername(data.name.split(' ')[0]); // Get first name
-        } else {
-          // Fallback to phone number if name isn't available
-          const phone = user.phone?.substring(3) || 'User';
-          setUsername(phone);
-        }
-      }
-    };
-
-    // Fetch today's stats
-    const fetchDailyStats = async () => {
-      if (user) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Get visits for today
-        const { data: visits, error: visitsError } = await supabase
-          .from('visits')
-          .select('visit_id')
-          .eq('sales_officer_id', user.id)
-          .gte('visit_time', today.toISOString())
-          .is('is_deleted', false);
-          
-        // Get orders for today and calculate total sales
-        const { data: orders, error: ordersError } = await supabase
-          .from('orders')
-          .select(`
-            order_id,
-            amount,
-            visits!inner(
-              visit_id,
-              sales_officer_id,
-              visit_time
-            )
-          `)
-          .eq('visits.sales_officer_id', user.id)
-          .gte('visits.visit_time', today.toISOString())
-          .is('is_deleted', false);
-          
-        if (!visitsError && !ordersError) {
-          // Calculate total sales amount
-          const totalSales = orders ? orders.reduce((sum, order) => sum + Number(order.amount), 0) : 0;
-          
-          setDailyStats({
-            ...dailyStats,
-            visitedShops: visits ? visits.length : 0,
-            orders: orders ? orders.length : 0,
-            sales: totalSales
-          });
-        }
-      }
-    };
-
-    fetchOfficerData();
-    fetchDailyStats();
-    
-    // Check if location is enabled
-    if (navigator.geolocation) {
-      navigator.permissions.query({ name: 'geolocation' }).then(result => {
-        setLocationEnabled(result.state === 'granted');
-      });
+  const [isEndDayModalOpen, setIsEndDayModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [todayStats, setTodayStats] = useState({ visits: 0, uniqueShops: 0 });
+  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  
+  // Custom hooks
+  const username = useUserProfile(user);
+  const dailyStats = useDailyStats(user);
+  const { locationEnabled, handleToggleLocation } = useLocationStatus();
+  
+  // Work hours hook
+  const [
+    { 
+      dayStarted, 
+      dayEnded, 
+      startTime, 
+      isOnBreak, 
+      elapsedTime,
+      isLoading: workHoursLoading,
+      isEndDayLoading,
+      errorMessage
+    },
+    {
+      startDay,
+      endDay,
+      toggleBreak,
+      confirmEndDay
     }
-    
-  }, [user]);
-
+  ] = useWorkHours(user?.id);
+  
+  // Event handlers
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
@@ -108,12 +67,6 @@ const HomePage: React.FC = () => {
 
   const handleDeleteSuccess = () => {
     navigate('/login');
-  };
-  
-  const handleStartDay = () => {
-    // In a real app, this would initialize the tracking and possibly
-    // create a day entry in the database
-    console.log('Starting day');
   };
   
   const handleVisitShop = () => {
@@ -124,116 +77,139 @@ const HomePage: React.FC = () => {
     navigate('/orders');
   };
   
-  const handleToggleLocation = () => {
-    if (!locationEnabled && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        () => setLocationEnabled(true),
-        () => alert('Location access is required for this app to function properly.')
-      );
+  // Handle end day confirmation
+  const handleConfirmEndDay = () => {
+    setIsEndDayModalOpen(true);
+  };
+  
+  // Execute end day when confirmed
+  const handleEndDay = async () => {
+    await endDay();
+    setIsEndDayModalOpen(false);
+  };
+
+  const fetchTodayStats = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Fetch total visits for today
+      const { data: visitsData, error: visitsError } = await supabase
+        .from('visits')
+        .select('visit_id')
+        .eq('sales_officer_id', user.id)
+        .gte('created_at', today.toISOString());
+        
+      if (visitsError) throw visitsError;
+      
+      // Fetch unique shops visited today
+      const { data: uniqueShopsData, error: uniqueShopsError } = await supabase
+        .from('visits')
+        .select('shop_id')
+        .eq('sales_officer_id', user.id)
+        .gte('created_at', today.toISOString());
+        
+      if (uniqueShopsError) throw uniqueShopsError;
+      
+      // Count unique shops
+      const uniqueShops = new Set(uniqueShopsData?.map(visit => visit.shop_id) || []).size;
+      
+      setTodayStats({
+        visits: visitsData?.length || 0,
+        uniqueShops: uniqueShops
+      });
+    } catch (error) {
+      console.error('Error fetching today stats:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'hi' : 'en');
+  };
+
+  useEffect(() => {
+    fetchTodayStats();
+  }, [user]);
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* App Header */}
-      <AppHeader 
-        onToggleMenu={() => setMenuOpen(!menuOpen)} 
-        menuOpen={menuOpen} 
-        onLogout={handleSignOut}
-      />
-      
-      {/* Side Menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-20">
-          <div className="bg-white h-full w-3/4 max-w-xs p-5 flex flex-col">
-            <h2 className="text-xl font-bold mb-5">Menu</h2>
-            
-            <div className="flex-grow">
-              <button 
-                onClick={handleSignOut}
-                className="bg-white hover:bg-gray-100 text-gray-800 w-full py-3 px-4 rounded-lg font-medium mb-2 text-left"
-              >
-                Logout
-              </button>
-              
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="bg-white hover:bg-gray-100 text-red-600 w-full py-3 px-4 rounded-lg font-medium text-left"
-              >
-                Delete Account
-              </button>
-            </div>
-          </div>
+      {/* Header with Language Toggle */}
+      <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
+        <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
+        <div className="flex-1 flex justify-center">
+          <button
+            className="text-gray-800 text-lg font-medium focus:outline-none"
+            onClick={toggleLanguage}
+          >
+            {language === 'en' ? 'EN | हिंदी' : 'हिंदी | EN'}
+          </button>
         </div>
-      )}
+      </header>
       
       {/* Main Content */}
       <main className="flex-grow px-4 pb-20 pt-2">
         <h1 className="text-3xl font-bold text-center mb-6">Hi {username}</h1>
         
-        {/* Start Day Button */}
-        <div className="flex justify-center mb-8">
-          <CircularButton onClick={handleStartDay} color="success">
-            <div className="text-center">
-              <div className="text-2xl font-bold">START</div>
-              <div className="text-2xl font-bold">DAY</div>
-            </div>
-          </CircularButton>
-        </div>
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md flex items-center">
+            <AlertTriangle size={18} className="mr-2" />
+            {errorMessage}
+          </div>
+        )}
         
-        {/* Target Progress */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2">Your Target</h2>
-          <ProgressBar 
-            current={dailyStats.visitedShops} 
-            total={dailyStats.totalShops} 
-            height="h-4" 
-          />
-          <p className="text-center mt-2">
-            {dailyStats.visitedShops} of {dailyStats.totalShops} shops
-          </p>
-        </div>
-        
-        {/* Today's Summary */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4">Today's Summary</h2>
-          
-          <div className="flex justify-between">
-            <div className="text-center">
-              <h3 className="text-lg">Orders:</h3>
-              <p className="text-xl">{dailyStats.orders}</p>
-            </div>
+        {workHoursLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <>
+            {/* Day Status View - Show different UI based on day status */}
+            {dayStarted ? (
+              <DayStartedView
+                startTime={startTime}
+                isOnBreak={isOnBreak}
+                elapsedTime={elapsedTime}
+                onEndDay={handleConfirmEndDay}
+                onToggleBreak={toggleBreak}
+              />
+            ) : dayEnded ? (
+              <DayEndedView />
+            ) : (
+              <StartDayView onStartDay={startDay} />
+            )}
             
-            <div className="text-center">
-              <h3 className="text-lg">Sales:</h3>
-              <p className="text-xl">₹{dailyStats.sales}</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="flex gap-4 mb-6">
-          <MainButton onClick={handleVisitShop} variant="outline" fullWidth>
-            Visit Shop
-          </MainButton>
-          
-          <MainButton onClick={handleViewOrders} variant="primary" fullWidth>
-            View Orders
-          </MainButton>
-        </div>
-        
-        {/* Location Button */}
-        <MainButton 
-          onClick={handleToggleLocation} 
-          variant="warning" 
-          fullWidth
-          disabled={locationEnabled}
-        >
-          <div className="flex items-center justify-center">
-            <MapPin className="mr-2" size={18} />
-            {locationEnabled ? 'Location enabled' : 'Turn on location'}
-          </div>
-        </MainButton>
+            {/* Target Progress */}
+            <TargetProgress
+              visitedShops={todayStats.uniqueShops}
+              totalShops={dailyStats.totalShops}
+            />
+            
+            {/* Today's Summary */}
+            <DailySummary
+              orders={dailyStats.orders}
+              sales={dailyStats.sales}
+            />
+            
+            {/* Action Buttons */}
+            <ActionButtons
+              canVisitShop={dayStarted && !isOnBreak && !dayEnded}
+              onVisitShop={handleVisitShop}
+              onViewOrders={handleViewOrders}
+            />
+            
+            {/* Location Status */}
+            <LocationStatus
+              locationEnabled={locationEnabled}
+              onToggleLocation={handleToggleLocation}
+            />
+          </>
+        )}
       </main>
       
       {/* Bottom Navigation */}
@@ -244,6 +220,14 @@ const HomePage: React.FC = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onSuccess={handleDeleteSuccess}
+      />
+      
+      {/* End Day Confirmation Modal */}
+      <ConfirmEndDayModal
+        isOpen={isEndDayModalOpen}
+        onClose={() => setIsEndDayModalOpen(false)}
+        onConfirm={handleEndDay}
+        loading={isEndDayLoading}
       />
     </div>
   );
