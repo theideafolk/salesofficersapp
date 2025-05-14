@@ -2,6 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import ShopsPage from './pages/ShopsPage';
@@ -112,7 +113,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <LanguageProvider>
+          <AppRoutes />
+        </LanguageProvider>
       </AuthProvider>
     </Router>
   );

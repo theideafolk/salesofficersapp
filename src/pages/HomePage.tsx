@@ -2,8 +2,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { AlertTriangle, LogOut } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../context/LanguageContext';
 
 // Components
 import BottomNavigation from '../components/BottomNavigation';
@@ -26,13 +27,13 @@ import { useLocationStatus } from '../hooks/useLocationStatus';
 const HomePage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { language, toggleLanguage, t } = useLanguage();
   
   // UI state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEndDayModalOpen, setIsEndDayModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [todayStats, setTodayStats] = useState({ visits: 0, uniqueShops: 0 });
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
   
   // Custom hooks
   const username = useUserProfile(user);
@@ -128,10 +129,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'hi' : 'en');
-  };
-
   useEffect(() => {
     fetchTodayStats();
   }, [user]);
@@ -153,7 +150,9 @@ const HomePage: React.FC = () => {
       
       {/* Main Content */}
       <main className="flex-grow px-4 pb-20 pt-2">
-        <h1 className="text-3xl font-bold text-center mb-6">Hi {username}</h1>
+        <h1 className="text-3xl font-bold text-center mb-6">
+          {t('homePageTitle', { username })}
+        </h1>
         
         {/* Error Message */}
         {errorMessage && (

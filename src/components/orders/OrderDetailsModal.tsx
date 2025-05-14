@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Gift } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatHelpers';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface OrderItem {
   product_id: string;
@@ -47,6 +48,8 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   order,
   shop
 }) => {
+  const { t } = useLanguage();
+
   if (!isOpen || !order) return null;
 
   // Helper function to get a shortened order ID for display
@@ -88,7 +91,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           >
             <ArrowLeft size={24} />
           </button>
-          <h2 className="text-xl font-bold text-center">Order Details</h2>
+          <h2 className="text-xl font-bold text-center">{t('orderDetails')}</h2>
         </div>
         
         {/* Scrollable Content Area */}
@@ -97,12 +100,12 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           <div className="p-6 border-b">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-xl font-bold">Order #{getShortOrderId(order.order_id)}</h3>
+                <h3 className="text-xl font-bold">{t('orderNumber')}{getShortOrderId(order.order_id)}</h3>
                 <p className="text-gray-600">{formatDisplayDate(order.date)}</p>
               </div>
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                <span className="text-lg">Order Placed</span>
+                <span className="text-lg">{t('orderPlaced')}</span>
               </div>
             </div>
             
@@ -117,7 +120,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           
           {/* Ordered Items List */}
           <div className="p-6">
-            <h3 className="text-xl font-bold mb-4">Ordered Items</h3>
+            <h3 className="text-xl font-bold mb-4">{t('orderedItems')}</h3>
             
             <div className="space-y-4">
               {order.items?.map((item, index) => (
@@ -141,14 +144,14 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   {item.free_qty > 0 && (
                     <div className="mt-1 text-green-600 flex items-center">
                       <Gift className="h-4 w-4 mr-1" />
-                      <span>Free: {item.free_qty} x {item.product_name}</span>
+                      <span>{t('free')}: {item.free_qty} x {item.product_name}</span>
                     </div>
                   )}
                   
                   {item.free_product_name && (
                     <div className="mt-1 text-green-600 flex items-center">
                       <Gift className="h-4 w-4 mr-1" />
-                      <span>Free: 1 x {item.free_product_name}</span>
+                      <span>{t('free')}: 1 x {item.free_product_name}</span>
                     </div>
                   )}
                 </div>
@@ -158,7 +161,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             {/* Order Total */}
             <div className="mt-6 pt-4 border-t">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">Total Order Value</h3>
+                <h3 className="text-xl font-bold">{t('totalOrderValue')}</h3>
                 <span className="text-xl font-bold">{formatCurrency(order.amount)}</span>
               </div>
             </div>
@@ -171,7 +174,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             onClick={onClose}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg text-lg"
           >
-            Close
+            {t('close')}
           </button>
         </div>
       </div>

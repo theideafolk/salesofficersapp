@@ -3,6 +3,7 @@ import React from 'react';
 import { Check, PauseCircle, PlayCircle } from 'lucide-react';
 import CircularButton from '../CircularButton';
 import { formatElapsedTime } from '../../utils/formatHelpers';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface DayStartedViewProps {
   startTime: string;
@@ -19,6 +20,8 @@ const DayStartedView: React.FC<DayStartedViewProps> = ({
   onEndDay,
   onToggleBreak
 }) => {
+  const { t } = useLanguage();
+
   return (
     <>
       {/* Status Card - Day Started */}
@@ -27,7 +30,7 @@ const DayStartedView: React.FC<DayStartedViewProps> = ({
           <div className="bg-green-500 rounded-full p-1 mr-2">
             <Check size={16} className="text-white" />
           </div>
-          <span className="text-gray-800">Day started at {startTime}</span>
+          <span className="text-gray-800">{t('dayStarted', { startTime })}</span>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
@@ -37,11 +40,11 @@ const DayStartedView: React.FC<DayStartedViewProps> = ({
               <PlayCircle size={18} className="mr-2 text-green-500" />
             )}
             <span className="text-gray-800 font-medium">
-              Working Hours: {formatElapsedTime(elapsedTime)}
+              {t('workingHours', { time: formatElapsedTime(elapsedTime) })}
             </span>
           </div>
           <span className="text-sm text-gray-500">
-            {isOnBreak ? "On break" : "Working"}
+            {isOnBreak ? t('onBreak') : t('working')}
           </span>
         </div>
       </div>
@@ -53,8 +56,7 @@ const DayStartedView: React.FC<DayStartedViewProps> = ({
           <div className="mr-8">
             <CircularButton onClick={onEndDay} color="danger" size="lg">
               <div className="text-center">
-                <div className="text-2xl font-bold">END</div>
-                <div className="text-2xl font-bold">DAY</div>
+                <div className="text-2xl font-bold">{t('endDay')}</div>
               </div>
             </CircularButton>
           </div>
@@ -66,7 +68,7 @@ const DayStartedView: React.FC<DayStartedViewProps> = ({
               isOnBreak ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
             } rounded-full h-20 w-20 font-bold flex items-center justify-center shadow-md`}
           >
-            {isOnBreak ? 'RESUME' : 'BREAK'}
+            {isOnBreak ? t('resume') : t('break')}
           </button>
         </div>
       </div>

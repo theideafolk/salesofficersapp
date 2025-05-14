@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Camera, MapPin, CheckCircle, Loader2, X, AlertCircle, RefreshCw, Clock } from 'lucide-react';
 import { uploadVisitProofImage } from '../utils/storage';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Shop {
   shop_id: string;
@@ -25,6 +26,7 @@ const ShopVisitPage: React.FC = () => {
   const { shopId } = useParams<{ shopId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   const [shop, setShop] = useState<Shop | null>(null);
   const [notes, setNotes] = useState('');
@@ -78,7 +80,7 @@ const ShopVisitPage: React.FC = () => {
   // Try to get location using current strategy
   const getCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by this browser');
+      setLocationError(t('locationError'));
       setIsGettingLocation(false);
       return;
     }
@@ -137,7 +139,7 @@ const ShopVisitPage: React.FC = () => {
                   lat: cachedLocation.lat,
                   lng: cachedLocation.lng
                 });
-                setLocationError('Using your last known location. For better accuracy, please check your location settings.');
+                setLocationError(t('locationError'));
                 setIsGettingLocation(false);
                 return;
               }
@@ -147,20 +149,7 @@ const ShopVisitPage: React.FC = () => {
           }
           
           // Show appropriate error message based on error code
-          let errorMsg = 'Unable to get your location. ';
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMsg += 'Please allow location access in your browser settings.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMsg += 'Location information is unavailable. Please try again in an open area.';
-              break;
-            case error.TIMEOUT:
-              errorMsg += 'The request to get your location timed out. Please check your GPS and network connection.';
-              break;
-            default:
-              errorMsg += 'An unknown error occurred.';
-          }
+          let errorMsg = t('locationError');
           setLocationError(errorMsg);
           setIsGettingLocation(false);
         }
@@ -170,7 +159,7 @@ const ShopVisitPage: React.FC = () => {
     );
     
     return locationId;
-  }, [currentStrategyIndex]);
+  }, [currentStrategyIndex, t]);
   
   // Initial location acquisition
   useEffect(() => {
@@ -274,7 +263,7 @@ const ShopVisitPage: React.FC = () => {
     }
     
     if (!userLocation) {
-      setError('Location is required. Please ensure location services are enabled and try again.');
+      setError(t('locationError'));
       return;
     }
     
@@ -405,7 +394,7 @@ const ShopVisitPage: React.FC = () => {
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold">Record Visit</h1>
+        <h1 className="text-xl font-bold">{t('recordVisit')}</h1>
       </header>
       
       {/* Main Content */}
@@ -436,7 +425,7 @@ const ShopVisitPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-gray-700 font-medium">
-                    Take a Photo as Proof
+                    {t('takePhotoProof')}
                   </label>
                 </div>
                 
@@ -461,14 +450,14 @@ const ShopVisitPage: React.FC = () => {
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-3 bg-gray-50"
                   >
                     <Camera className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-500">Take a photo of the shop or receipt</p>
+                    <p className="text-gray-500">{t('takePhotoReceipt')}</p>
                   </div>
                 )}
                 
                 <div className="flex justify-center">
                   <label className="flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-md cursor-pointer transition-colors">
                     <Camera className="h-5 w-5 mr-2" />
-                    <span>Capture Photo</span>
+                    <span>{t('capturePhoto')}</span>
                     <input 
                       type="file"
                       accept="image/*"
@@ -483,12 +472,12 @@ const ShopVisitPage: React.FC = () => {
               {/* Notes */}
               <div>
                 <label className="block text-gray-700 font-medium mb-2">
-                  Notes (Optional)
+                  {t('notesOptional')}
                 </label>
                 <textarea
                   rows={3}
                   className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Add any notes about this visit..."
+                  placeholder={t('notesOptional')}
                   value={notes}
                   onChange={handleNotesChange}
                 ></textarea>
@@ -499,14 +488,14 @@ const ShopVisitPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-green-600 font-medium">
                     <CheckCircle className="h-5 w-5 mr-2" />
-                    <span>Location captured</span>
+                    <span>{t('locationCaptured')}</span>
                   </div>
                   <button 
                     onClick={handleRetryLocation}
                     className="text-blue-600 flex items-center text-sm"
                   >
                     <RefreshCw size={14} className="mr-1" />
-                    Refresh
+                    {t('retryLocation')}
                   </button>
                 </div>
               ) : (
@@ -519,8 +508,8 @@ const ShopVisitPage: React.FC = () => {
                     )}
                     <span>
                       {isGettingLocation ? 
-                        `Getting your location (Strategy ${currentStrategyIndex + 1}/${locationStrategies.length})...` : 
-                        'Location not available'
+                        `${t('waitingLocation')} (${currentStrategyIndex + 1}/${locationStrategies.length})...` : 
+                        t('locationError')
                       }
                     </span>
                   </div>
@@ -535,7 +524,7 @@ const ShopVisitPage: React.FC = () => {
                       className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded text-sm flex items-center justify-center w-full"
                     >
                       <RefreshCw size={14} className="mr-1" />
-                      Retry Getting Location
+                      {t('retryLocation')}
                     </button>
                   )}
                 </div>
@@ -552,10 +541,10 @@ const ShopVisitPage: React.FC = () => {
                 {saving ? (
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    {uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Recording Visit...'}
+                    {uploadProgress > 0 ? `${t('confirmVisit')}... ${uploadProgress}%` : `${t('confirmVisit')}...`}
                   </div>
                 ) : (
-                  'Confirm Visit'
+                  t('confirmVisit')
                 )}
               </button>
             </div>
@@ -609,7 +598,7 @@ const ShopVisitPage: React.FC = () => {
               </div>
               
               {/* Title */}
-              <h2 className="text-4xl font-bold text-center mb-2">Visit Confirmed</h2>
+              <h2 className="text-4xl font-bold text-center mb-2">{t('visitConfirmed')}</h2>
               
               {/* Shop Name */}
               <h3 className="text-2xl font-medium text-center mb-6">{shop?.name}</h3>
@@ -618,7 +607,7 @@ const ShopVisitPage: React.FC = () => {
               <div className="mb-4">
                 <div className="flex items-center mb-2">
                   <MapPin className="h-6 w-6 mr-2 text-gray-800" />
-                  <span className="text-lg text-gray-800">GPS location captured</span>
+                  <span className="text-lg text-gray-800">{t('gpsLocationCaptured')}</span>
                 </div>
                 <div className="flex items-center">
                   <Clock className="h-6 w-6 mr-2 text-gray-800" />
@@ -644,7 +633,7 @@ const ShopVisitPage: React.FC = () => {
                 <div className="bg-green-500 rounded-full p-1 mr-2">
                   <CheckCircle className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-lg">Proof of visit logged</span>
+                <span className="text-lg">{t('proofVisitLogged')}</span>
               </div>
               
               {/* Action Button */}
@@ -653,13 +642,13 @@ const ShopVisitPage: React.FC = () => {
                 onClick={handlePlaceOrder}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-lg text-base"
               >
-                Place Order
+                {t('placeOrderBtn')}
               </button>
                 <button
                   onClick={handleReturnToShops}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded-lg text-base"
                 >
-                  Entry Denied
+                  {t('entryDenied')}
                 </button>
               </div>
             </div>

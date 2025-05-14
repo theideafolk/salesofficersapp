@@ -2,6 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { MapPin, User, Phone } from 'lucide-react';
 import { getMapUrl, getPhoneUrl, isMobile, formatLastVisitDate, truncateText } from '../utils/shopHelpers';
+import { useLanguage } from '../context/LanguageContext';
 
 // Shop interface matching the one from ShopsPage
 interface Shop {
@@ -30,6 +31,7 @@ interface ShopItemProps {
 
 const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit, isVisitedToday = false, isOnBreak = false }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const { t } = useLanguage();
 
   const handleVisitClick = useCallback(() => {
     if (isVisitedToday) {
@@ -122,11 +124,11 @@ const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit, isVisitedT
           
           <div className="flex items-center text-gray-600 mt-1">
             <User className="h-4 w-4 mr-1 min-w-4 flex-shrink-0" />
-            <span>Last visit: {formatLastVisitDate(shop.last_visit_date)}</span>
+            <span>{t('lastVisit')}: {formatLastVisitDate(shop.last_visit_date)}</span>
           </div>
           {shop.distance !== undefined && (
             <div className="text-gray-600 mt-1">
-              <span>Distance: {shop.distance.toFixed(2)} km</span>
+              <span>{t('distance')}: {shop.distance.toFixed(2)} {t('km')}</span>
             </div>
           )}
         </div>
@@ -143,27 +145,27 @@ const ShopItem: React.FC<ShopItemProps> = ({ shop, onVisit, canVisit, isVisitedT
             style={isVisitedToday ? { pointerEvents: 'auto' } : {}}
             disabled={isOnBreak || !canVisit}
           >
-            Visit
+            {t('visit')}
           </button>
           {/* Confirmation Modal */}
           {showConfirmModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
               <div className="bg-white rounded-xl shadow-lg p-6 max-w-xs w-full text-center">
                 <div className="mb-4 text-lg font-semibold text-gray-800">
-                  You have already visited the shop today.<br/>Do you want to visit the shop again?
+                  {t('shopRevisitConfirmation')}
                 </div>
                 <div className="flex justify-center gap-4 mt-4">
                   <button
                     onClick={handleConfirmVisit}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                   >
-                    Yes
+                    {t('yes')}
                   </button>
                   <button
                     onClick={handleCancelVisit}
                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                 </div>
               </div>

@@ -91,16 +91,37 @@ export const useRecentVisits = (userId: string | undefined) => {
       }
       
       if (data) {
-        const visits = data.map(visit => ({
-          shop_id: visit.shops.shop_id,
-          name: visit.shops.name,
-          visit_time: new Date(visit.visit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }));
+        // Create a Map to deduplicate shops and keep only the latest visit for each
+        const uniqueShops = new Map<string, RecentVisit>();
         
-        setRecentVisits(visits);
+        // Process each visit and only keep the most recent one per shop
+        data.forEach(visit => {
+          const shopId = visit.shops.shop_id;
+          
+          // Format the visit data
+          const formattedVisit: RecentVisit = {
+            shop_id: shopId,
+            name: visit.shops.name,
+            visit_time: new Date(visit.visit_time).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })
+          };
+          
+          // Since data is already ordered by visit_time (descending),
+          // the first occurrence of each shop_id will be the most recent visit
+          if (!uniqueShops.has(shopId)) {
+            uniqueShops.set(shopId, formattedVisit);
+          }
+        });
+        
+        // Convert the Map values to array
+        const deduplicatedVisits = Array.from(uniqueShops.values());
+        
+        setRecentVisits(deduplicatedVisits);
         
         // Cache the visits data
-        saveToCache(visits);
+        saveToCache(deduplicatedVisits);
       }
     } catch (err) {
       console.error('Error fetching fresh visits data:', err);

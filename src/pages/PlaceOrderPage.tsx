@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, Minus, Plus } from 'lucide-react';
 import BottomNavigation from '../components/BottomNavigation';
 import ProductSearch from '../components/order/ProductSearch';
 import CategoryList from '../components/order/CategoryList';
@@ -10,13 +10,18 @@ import PopularProducts from '../components/order/PopularProducts';
 import ProductList from '../components/order/ProductList';
 import OrderSummary from '../components/order/OrderSummary';
 import useOrderManagement from '../hooks/useOrderManagement';
-import { OrderItem } from '../types/products';
+import { OrderItem, Product } from '../types/products';
+import useShopTopProducts from '../hooks/useShopTopProducts';
+import { formatCurrency } from '../utils/formatHelpers';
+import { useLanguage } from '../context/LanguageContext';
 
 const PlaceOrderPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { shopId } = useParams<{ shopId: string }>();
   const location = useLocation();
+  const { t } = useLanguage();
+  
   const visitId = location.state?.visitId as string;
   const shopName = location.state?.shopName as string;
   const savedOrderItems = location.state?.orderItems as OrderItem[] | undefined;
@@ -38,6 +43,7 @@ const PlaceOrderPage: React.FC = () => {
     totalValue,
     lastOrders,
     hasScheme,
+    getSchemeDetails,
     getSchemeDescription,
     handleSchemeChoice,
     getSchemeChoice,
@@ -51,6 +57,9 @@ const PlaceOrderPage: React.FC = () => {
     hasFreeItems,
     setOrderItems
   } = useOrderManagement(shopId || '');
+
+  // Use custom hook to get top products for the shop
+  const { productsWithDetails: topShopProducts, loading: topProductsLoading } = useShopTopProducts(shopId);
 
   // Initialize orderItems if returning from review page or editing an order
   useEffect(() => {
@@ -109,14 +118,18 @@ const PlaceOrderPage: React.FC = () => {
     });
   }, [products, searchTerm, activeCategory]);
   
-  // Get popular products (showing first 5 for the demo)
+  // Get popular products from top ordered products for this shop, or fallback to first 5
   const popularProducts = useMemo(() => {
-    return products.length > 0 ? products.slice(0, 5) : [];
-  }, [products]);
+    if (topShopProducts && topShopProducts.length > 0) {
+      return topShopProducts;
+    } else {
+      return products.length > 0 ? products.slice(0, 5) : [];
+    }
+  }, [topShopProducts, products]);
 
   // Handle review order button
   const handleReviewOrder = () => {
-    if (orderItems.length === 0) {
+    if (orderItems.filter(item => !item.is_free).length === 0) {
       alert('Please add at least one item to the order');
       return;
     }
@@ -149,6 +162,11 @@ const PlaceOrderPage: React.FC = () => {
     </ul>
   ), [orderItems]);
 
+  // Get current order items for editing
+  const currentOrderItems = useMemo(() => {
+    return orderItems.filter(item => !item.is_free);
+  }, [orderItems]);
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -161,7 +179,7 @@ const PlaceOrderPage: React.FC = () => {
           <ArrowLeft size={24} />
         </button>
         
-        <h1 className="text-xl font-bold">{isEditing ? 'Edit Order' : 'Place Order'}</h1>
+        <h1 className="text-xl font-bold">{isEditing ? t('editOrder') : t('placeOrder')}</h1>
         
         <button 
           onClick={handleLogout}
@@ -178,19 +196,82 @@ const PlaceOrderPage: React.FC = () => {
         <ProductSearch 
           searchTerm={searchTerm}
           onSearch={handleSearch}
+          placeholder={t('searchProduct')}
         />
         
-        {/* Popular Products Title with Shop Name */}
-        <h2 className="text-xl font-bold mb-4">
-          {isEditing ? 'Edit Order for ' : 'Popular Products - '}{shopName || 'Shop'}
-        </h2>
+        {/* Current Order Items (when editing) - Horizontal scroll */}
+        {isEditing && (
+          <>
+            <h2 className="text-xl font-bold mb-4">
+              {t('editOrder')} {shopName || 'Shop'}
+            </h2>
+            
+            {currentOrderItems.length > 0 ? (
+              <div className="mb-6 overflow-x-auto pb-4 -mx-4 px-4">
+                <div className="flex space-x-3 min-w-max">
+                  {currentOrderItems.map((item) => {
+                    const product = products.find(p => p.product_id === item.product_id);
+                    if (!product) return null;
+                    
+                    return (
+                      <div 
+                        key={item.product_id} 
+                        className="border rounded-lg p-3 relative min-w-[180px] max-w-[200px]"
+                      >
+                        <h3 className="font-bold">{item.name}</h3>
+                        <p className="text-sm text-gray-700">
+                          {item.unit_of_measure || 'Standard pack'}
+                        </p>
+                        
+                        <div className="flex items-center bg-gray-100 rounded-full p-1 my-2">
+                          <button 
+                            onClick={() => decrementQuantity(product)} 
+                            className="h-8 w-8 flex items-center justify-center"
+                          >
+                            <Minus size={18} />
+                          </button>
+                          <span className="font-medium px-3">{item.quantity}</span>
+                          <button 
+                            onClick={() => incrementQuantity(product)} 
+                            className="h-8 w-8 flex items-center justify-center"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
+                        
+                        <p className="text-xl font-bold">
+                          {formatCurrency(item.unit_price)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 bg-yellow-50 rounded-lg mb-6">
+                <p className="text-yellow-700">No products in this order. Add products below.</p>
+              </div>
+            )}
+            
+            <h2 className="text-xl font-bold mb-4">{t('addMoreProducts')}</h2>
+          </>
+        )}
+        
+        {/* Popular Products Title */}
+        {!isEditing && (
+          <h2 className="text-xl font-bold mb-4">
+            {t('popularProducts')} - {shopName || 'Shop'}
+          </h2>
+        )}
         
         {/* Loading state */}
-        {loading ? (
+        {(loading || topProductsLoading) && !isEditing && (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
           </div>
-        ) : (
+        )}
+        
+        {!loading && !topProductsLoading && (
           <>
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
@@ -200,7 +281,7 @@ const PlaceOrderPage: React.FC = () => {
             
             {products.length === 0 && !loading && !error && (
               <div className="text-center py-6 text-gray-500">
-                No products available. Please check your connection and try again.
+                {t('noProductsAvailable')}
               </div>
             )}
             
@@ -254,7 +335,7 @@ const PlaceOrderPage: React.FC = () => {
           hasFreeItems={hasFreeItems}
           freeItems={freeItemsList}
           onReview={handleReviewOrder}
-          disableReview={orderItems.length === 0}
+          disableReview={orderItems.filter(item => !item.is_free).length === 0}
         />
       </main>
       

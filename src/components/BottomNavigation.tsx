@@ -2,40 +2,42 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Store, ClipboardList, DollarSign, User } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface NavItem {
   path: string;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
 }
 
 const BottomNavigation: React.FC = () => {
   const location = useLocation();
+  const { t } = useLanguage();
   
   const navItems: NavItem[] = [
     {
       path: '/',
-      label: 'Home',
+      labelKey: 'home',
       icon: <Home size={24} />
     },
     {
       path: '/shops',
-      label: 'Shops',
+      labelKey: 'visitShopTitle',
       icon: <Store size={24} />
     },
     {
       path: '/orders',
-      label: 'Orders',
+      labelKey: 'ordersTitle',
       icon: <ClipboardList size={24} />
     },
     {
       path: '/sales',
-      label: 'Sales',
+      labelKey: 'salesTitle',
       icon: <DollarSign size={24} />
     },
     {
       path: '/profile',
-      label: 'Profile',
+      labelKey: 'profileTitle', 
       icon: <User size={24} />
     }
   ];
@@ -56,7 +58,7 @@ const BottomNavigation: React.FC = () => {
             <div className={`${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
               {item.icon}
             </div>
-            <span className="text-xs mt-1">{item.label}</span>
+            <span className="text-xs mt-1">{t(item.labelKey)}</span>
           </Link>
         );
       })}

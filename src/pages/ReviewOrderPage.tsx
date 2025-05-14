@@ -7,6 +7,7 @@ import { ArrowLeft, Minus, Plus, Gift, Loader2 } from 'lucide-react';
 import BottomNavigation from '../components/BottomNavigation';
 import { OrderItem, Product, Scheme } from '../types/products';
 import { formatCurrency } from '../utils/formatHelpers';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LocationState {
   orderItems: OrderItem[];
@@ -23,6 +24,8 @@ const ReviewOrderPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
+  
   const { 
     orderItems: initialOrderItems, 
     shopId, 
@@ -461,7 +464,7 @@ const ReviewOrderPage: React.FC = () => {
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold">Cart Summary</h1>
+        <h1 className="text-xl font-bold">{t('cartSummary')}</h1>
       </header>
       
       {/* Main Content */}
@@ -482,7 +485,7 @@ const ReviewOrderPage: React.FC = () => {
         
         {/* Cart Items Header */}
         <div className="flex justify-between items-center mt-4 mb-6">
-          <h2 className="text-2xl font-bold">Cart Items</h2>
+          <h2 className="text-2xl font-bold">{t('cartItems')}</h2>
           <span className="text-lg">{shopName}</span>
         </div>
         
@@ -577,7 +580,7 @@ const ReviewOrderPage: React.FC = () => {
         <div className="mt-6 mb-6">
           <input
             type="text"
-            placeholder="Add any notes (optional)"
+            placeholder={t('addNotes')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="w-full border rounded-lg p-4 text-gray-700"
@@ -586,8 +589,8 @@ const ReviewOrderPage: React.FC = () => {
         
         {/* Order Summary */}
         <div className="flex justify-between items-center mb-6">
-          <span className="text-xl font-bold">Total Items: {totalItemsCount}</span>
-          <span className="text-xl font-bold">Subtotal: {formatCurrency(totalValue)}</span>
+          <span className="text-xl font-bold">{t('totalItems')}: {totalItemsCount}</span>
+          <span className="text-xl font-bold">{t('subtotal')}: {formatCurrency(totalValue)}</span>
         </div>
         
         {/* Confirm Order Button */}
@@ -603,10 +606,10 @@ const ReviewOrderPage: React.FC = () => {
           {loading ? (
             <>
               <Loader2 className="animate-spin mr-2 h-5 w-5" />
-              Processing...
+              {t('processing')}
             </>
           ) : (
-            isEditing ? 'Update Order' : 'Confirm Order'
+            isEditing ? t('updateOrder') : t('confirmOrder')
           )}
         </button>
       </main>

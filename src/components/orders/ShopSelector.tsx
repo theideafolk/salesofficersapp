@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatLastVisitDate } from '../../utils/shopHelpers';
 import { MapPin, Plus, History } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Shop {
   shop_id: string;
@@ -49,6 +50,8 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
   onViewHistory,
   canPlaceOrder = true
 }) => {
+  const { t } = useLanguage();
+  
   // Filter shops based on search term
   const filteredVisitedShops = searchTerm 
     ? visitedShops.filter(shop => 
@@ -66,7 +69,7 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
           }`}
           onClick={() => onTabChange('visited')}
         >
-          Visited Shops
+          {t('visitedShops')}
         </button>
         <button
           className={`flex-1 py-2 rounded-full ${
@@ -74,7 +77,7 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
           }`}
           onClick={() => onTabChange('nearby')}
         >
-          Nearby Shops
+          {t('nearbyShops')}
         </button>
       </div>
       
@@ -88,7 +91,7 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
         <input
           type="text"
           className="bg-gray-100 border border-gray-200 text-gray-900 text-base rounded-lg block w-full pl-10 p-2.5"
-          placeholder="Search by shop name"
+          placeholder={t('searchByShopName')}
           value={searchTerm}
           onChange={onSearchChange}
         />
@@ -96,7 +99,7 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
       
       {/* Shop list heading */}
       <h2 className="text-2xl font-bold mb-4">
-        {activeTab === 'visited' ? 'Shops Visited Today' : 'Shops Near You'}
+        {activeTab === 'visited' ? t('visitedShops') : t('nearbyShops')}
       </h2>
       
       {/* Shop list */}
@@ -142,7 +145,7 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            No shops visited today. Visit a shop to place orders.
+            {t('noOrdersFound')}
           </div>
         )
       ) : (
@@ -195,7 +198,7 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            No shops found nearby. Try adding new shops or check your location settings.
+            {t('noNearbyShops')}
           </div>
         )
       )}

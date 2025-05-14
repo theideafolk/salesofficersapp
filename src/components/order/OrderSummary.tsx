@@ -1,6 +1,7 @@
 // Order summary component for showing cart totals and free offer status
 import React from 'react';
 import { Gift, HelpCircle } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface OrderSummaryProps {
   totalItems: number;
@@ -27,6 +28,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   onReview,
   disableReview
 }) => {
+  const { t } = useLanguage();
+
   // Format currency with two decimal places
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toFixed(2)}`;
@@ -35,8 +38,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   return (
     <div className="mt-6 pt-4 border-t">
       <div className="flex justify-between items-center mb-4">
-        <span className="text-lg font-bold">Total Items: {totalItems}</span>
-        <span className="text-lg font-bold">Total Value: {formatCurrency(totalValue)}</span>
+        <span className="text-lg font-bold">{t('totalItems')}: {totalItems}</span>
+        <span className="text-lg font-bold">{t('subtotal')}: {formatCurrency(totalValue)}</span>
       </div>
       
       {/* Order-level scheme status */}
@@ -92,7 +95,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         className={`w-full ${disableReview ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold py-4 px-4 rounded-lg text-lg`}
         disabled={disableReview}
       >
-        Review Order ({formatCurrency(totalValue)})
+        {t('reviewOrder')} ({formatCurrency(totalValue)})
       </button>
     </div>
   );

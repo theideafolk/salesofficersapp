@@ -2,6 +2,7 @@
 import React from 'react';
 import { MapPin, Check } from 'lucide-react';
 import MainButton from '../MainButton';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface LocationStatusProps {
   locationEnabled: boolean;
@@ -12,11 +13,13 @@ const LocationStatus: React.FC<LocationStatusProps> = ({
   locationEnabled, 
   onToggleLocation 
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <>
       {locationEnabled ? (
         <div className="bg-green-500 text-white text-center py-4 rounded mb-4 flex items-center justify-center">
-          <span>All data synced and location active</span>
+          <span>{t('allDataSynced')}</span>
           <Check size={18} className="ml-2" />
         </div>
       ) : (
@@ -27,7 +30,7 @@ const LocationStatus: React.FC<LocationStatusProps> = ({
         >
           <div className="flex items-center justify-center">
             <MapPin className="mr-2" size={18} />
-            Turn on location
+            {t('turnOnLocation')}
           </div>
         </MainButton>
       )}
