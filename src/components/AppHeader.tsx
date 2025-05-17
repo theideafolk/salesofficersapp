@@ -1,6 +1,7 @@
 // Header component for the app with menu, language selector and logout button
-import React, { useState } from 'react';
+import React from 'react';
 import { Menu, LogOut, X } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AppHeaderProps {
   onToggleMenu: () => void;
@@ -13,11 +14,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   menuOpen, 
   onLogout 
 }) => {
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
-  
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'hi' : 'en');
-  };
+  const { language, toggleLanguage } = useLanguage();
   
   const handleLogout = () => {
     if (onLogout) {

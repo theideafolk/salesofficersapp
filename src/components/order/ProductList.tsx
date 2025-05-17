@@ -2,6 +2,7 @@
 import React from 'react';
 import { Product } from '../../types/products';
 import ProductItem from './ProductItem';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ProductListProps {
   products: Product[];
@@ -30,10 +31,12 @@ const ProductList: React.FC<ProductListProps> = ({
   onDecrement,
   onSchemeChoiceChange
 }) => {
+  const { t } = useLanguage();
+
   if (products.length === 0) {
     return (
       <div className="text-center py-6 text-gray-500">
-        No products found for the selected category or search term.
+        {t('noProductsFound')}
       </div>
     );
   }

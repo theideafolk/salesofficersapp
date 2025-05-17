@@ -8,6 +8,7 @@ import RecentVisitItem from '../components/RecentVisitItem';
 import { useNearbyShops } from '../hooks/useNearbyShops';
 import { useRecentVisits } from '../hooks/useRecentVisits';
 import { useWorkStatus } from '../hooks/useWorkStatus';
+import { useLanguage } from '../context/LanguageContext';
 import { Search, Plus, AlertCircle, LogOut, Clock, CheckCircle, X } from 'lucide-react';
 
 // Target number of shops to visit per day
@@ -17,6 +18,7 @@ const ShopsPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const locationState = useLocation();
+  const { t } = useLanguage(); // Use translation function
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'nearby' | 'assigned'>('nearby');
@@ -55,15 +57,15 @@ const ShopsPage: React.FC = () => {
         },
         (error) => {
           console.error('Error getting location:', error);
-          setError('Unable to get your location. Please ensure location services are enabled.');
+          setError(t('locationError'));
         },
         // Add options for faster location retrieval
         { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
       );
     } else {
-      setError('Geolocation is not supported by this browser');
+      setError(t('locationError'));
     }
-  }, []);
+  }, [t]);
   
   // Handle shop search with debouncing
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,7 +118,7 @@ const ShopsPage: React.FC = () => {
       <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
         <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
         <div className="flex-1 flex justify-center">
-          <h1 className="text-xl font-bold">Visit Shop</h1>
+          <h1 className="text-xl font-bold">{t('visitShopTitle')}</h1>
         </div>
       </header>
       
@@ -142,7 +144,7 @@ const ShopsPage: React.FC = () => {
         {dayEnded && (
           <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md flex items-center">
             <Clock className="h-5 w-5 mr-2" />
-            <span>Your work day has ended. Visit and add shop features are disabled.</span>
+            <span>{t('dayEndedMessage')}</span>
           </div>
         )}
         
@@ -150,7 +152,7 @@ const ShopsPage: React.FC = () => {
         {isOnBreak && (
           <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded-md flex items-center">
             <AlertCircle className="h-5 w-5 mr-2" />
-            <span>You are currently on break. Visit and add shop features are disabled.</span>
+            <span>{t('onBreakMessage')}</span>
           </div>
         )}
         
@@ -162,7 +164,7 @@ const ShopsPage: React.FC = () => {
           <input
             type="text"
             className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5"
-            placeholder="Search shop by name or number"
+            placeholder={t('shopsByName')}
             value={searchTerm}
             onChange={handleSearch}
           />
@@ -179,7 +181,7 @@ const ShopsPage: React.FC = () => {
           disabled={!canPerformActions || checkingStatus}
         >
           <Plus className="mr-2 h-5 w-5" />
-          New Shop
+          {t('newShop')}
         </button>
 
         {/* Shop selection tabs */}
@@ -190,7 +192,7 @@ const ShopsPage: React.FC = () => {
             }`}
             onClick={() => handleTabChange('nearby')}
           >
-            Nearby Shops
+            {t('nearbyShops')}
           </button>
           <button
             className={`flex-1 py-2 rounded-full ${
@@ -198,15 +200,15 @@ const ShopsPage: React.FC = () => {
             }`}
             onClick={() => handleTabChange('assigned')}
           >
-            Assigned Shops
+            {t('assignedShops')}
           </button>
         </div>
         
         {/* Pending Visits Section */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold">VISITS PENDING</h2>
-            <span className="text-gray-600 font-medium">{remainingVisits} left</span>
+            <h2 className="text-lg font-bold">{t('visitsPending')}</h2>
+            <span className="text-gray-600 font-medium">{remainingVisits} {t('left')}</span>
           </div>
           
           {activeTab === 'nearby' ? (
@@ -230,13 +232,13 @@ const ShopsPage: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-6 text-gray-500">
-                No shops found nearby. Try adding a new shop or check your location settings.
+                {t('noNearbyShops')}
               </div>
             )
           ) : (
             // Assigned Shops View
             <div className="text-center py-8 text-gray-500">
-              No shops are assigned to you for today.
+              {t('noAssignedShops')}
             </div>
           )}
         </div>
@@ -244,7 +246,7 @@ const ShopsPage: React.FC = () => {
         {/* Recently Visited Section */}
         {recentVisits.length > 0 && (
           <div>
-            <h2 className="text-lg font-bold mb-4">RECENTLY VISITED</h2>
+            <h2 className="text-lg font-bold mb-4">{t('recentlyVisited')}</h2>
             <div className="space-y-4">
               {recentVisits.map((visit, index) => (
                 <RecentVisitItem key={`${visit.shop_id}-${index}`} visit={visit} />

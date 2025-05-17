@@ -1,5 +1,5 @@
 // Orders page component for viewing and managing orders
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,7 @@ import useShopOrders, { Order } from '../hooks/useShopOrders';
 import useShopDetails, { Shop } from '../hooks/useShopDetails';
 import { formatLastVisitDate } from '../utils/shopHelpers';
 import { useWorkStatus } from '../hooks/useWorkStatus';
+import { useLanguage } from '../context/LanguageContext';
 
 interface VisitedShop {
   visit_id: string;
@@ -26,6 +27,7 @@ const OrdersPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const locationState = useLocation();
+  const { t } = useLanguage(); // Use translation function
   
   // Get work status
   const { dayStarted, isOnBreak } = useWorkStatus(user?.id);
@@ -108,19 +110,36 @@ const OrdersPage: React.FC = () => {
         }
         
         if (data) {
-          // Format the visits data
-          const formattedVisits = data.map(visit => ({
-            visit_id: visit.visit_id,
-            shop_id: visit.shop_id,
-            shop_name: visit.shops.name,
-            visit_time: new Date(visit.visit_time).toLocaleTimeString([], {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true
-            })
-          }));
+          // Create a Map to deduplicate shops and keep only the latest visit for each
+          const uniqueShops = new Map<string, VisitedShop>();
           
-          setVisitedShops(formattedVisits);
+          // Process the visits data and keep only the most recent visit for each shop
+          data.forEach(visit => {
+            const shopId = visit.shop_id;
+            
+            // Format the visit
+            const formattedVisit: VisitedShop = {
+              visit_id: visit.visit_id,
+              shop_id: shopId,
+              shop_name: visit.shops.name,
+              visit_time: new Date(visit.visit_time).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })
+            };
+            
+            // Since data is already ordered by visit_time (descending),
+            // the first occurrence of a shop_id will be the most recent visit
+            if (!uniqueShops.has(shopId)) {
+              uniqueShops.set(shopId, formattedVisit);
+            }
+          });
+          
+          // Convert the Map values to an array
+          const deduplicatedVisits = Array.from(uniqueShops.values());
+          
+          setVisitedShops(deduplicatedVisits);
         }
       } catch (err) {
         console.error('Error:', err);
@@ -243,7 +262,7 @@ const OrdersPage: React.FC = () => {
         <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
         <div className="flex-1 flex justify-center">
           <h1 className="text-xl font-bold">
-            {selectedShopId ? 'Past Orders' : 'Orders'}
+            {selectedShopId ? t('pastOrders') : t('ordersTitle')}
           </h1>
         </div>
       </header>
@@ -252,7 +271,7 @@ const OrdersPage: React.FC = () => {
         {isOnBreak && (
           <div className="mb-4 w-full p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded-md flex items-center">
             <AlertCircle className="h-5 w-5 mr-2" />
-            You are currently on break. New Orders feature is disabled
+            {t('onBreakOrdersMessage')}
           </div>
         )}
         {/* Show different content based on whether a shop is selected */}

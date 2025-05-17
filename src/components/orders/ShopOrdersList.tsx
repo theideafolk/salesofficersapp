@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/formatHelpers';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface OrderItem {
   product_id: string;
@@ -35,6 +36,8 @@ const ShopOrdersList: React.FC<ShopOrdersListProps> = ({
   onEditOrder,
   loading 
 }) => {
+  const { t } = useLanguage();
+  
   // Format date for display
   const formatDisplayDate = (dateString: string): string => {
     try {
@@ -67,7 +70,7 @@ const ShopOrdersList: React.FC<ShopOrdersListProps> = ({
   if (orders.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        No orders found for this shop.
+        {t('noOrdersFound')}
       </div>
     );
   }
@@ -92,13 +95,13 @@ const ShopOrdersList: React.FC<ShopOrdersListProps> = ({
                   className="text-blue-500 font-medium"
                   onClick={() => onOpenOrderDetails(order)}
                 >
-                  VIEW
+                  {t('view')}
                 </button>
                 <button 
                   className="text-green-500 font-medium"
                   onClick={() => onEditOrder(order)}
                 >
-                  EDIT
+                  {t('edit')}
                 </button>
               </div>
             </div>

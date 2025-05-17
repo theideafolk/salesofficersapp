@@ -1,6 +1,7 @@
 // Action Buttons component for HomePage
 import React from 'react';
 import MainButton from '../MainButton';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ActionButtonsProps {
   canVisitShop: boolean;
@@ -13,6 +14,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onVisitShop, 
   onViewOrders 
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="flex gap-4 mb-6">
       <MainButton 
@@ -21,7 +24,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         fullWidth 
         disabled={!canVisitShop}
       >
-        Visit Shop
+        {t('visitShop')}
       </MainButton>
       
       <MainButton 
@@ -29,7 +32,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         variant="primary" 
         fullWidth
       >
-        PLACE ORDER
+        {t('placeOrder')}
       </MainButton>
     </div>
   );

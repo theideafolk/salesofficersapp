@@ -7,6 +7,7 @@ import OrderDetailsModal from '../components/orders/OrderDetailsModal';
 import SideMenu from '../components/home/SideMenu';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 const BAR_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TARGET_SHOPS_PER_DAY = 25;
@@ -33,6 +34,8 @@ function getStartOfPeriod(period: string) {
 const SalesPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate ? useNavigate() : () => {};
+  const { t } = useLanguage(); // Use translation function
+  
   const [period, setPeriod] = useState<'Today' | 'This Week' | 'This Month'>('Today');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -383,7 +386,7 @@ const SalesPage: React.FC = () => {
       <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
         <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
         <div className="flex-1 flex justify-center">
-          <h1 className="text-xl font-bold">My Sales</h1>
+          <h1 className="text-xl font-bold">{t('salesTitle')}</h1>
         </div>
       </header>
       <main className="flex-grow p-4 pb-24">
@@ -396,9 +399,9 @@ const SalesPage: React.FC = () => {
                 value={period}
                 onChange={e => { setPeriod(e.target.value as any); setBarWindow(0); }}
               >
-                <option value="Today">Today</option>
-                <option value="This Week">This Week</option>
-                <option value="This Month">This Month</option>
+                <option value="Today">{t('today')}</option>
+                <option value="This Week">{t('thisWeek')}</option>
+                <option value="This Month">{t('thisMonth')}</option>
               </select>
             </div>
             <div className="absolute right-0 flex justify-end w-full pointer-events-none">
@@ -449,14 +452,14 @@ const SalesPage: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">
             <User className="w-7 h-7 text-blue-600" strokeWidth={2} />
             <div>
-              <div className="text-xs text-gray-500">Shops Visited</div>
+              <div className="text-xs text-gray-500">{t('shopsVisited')}</div>
               <div className="text-xl font-bold text-gray-800">{visitedCount}</div>
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">
             <ShoppingBag className="w-7 h-7 text-blue-600" strokeWidth={2} />
             <div>
-              <div className="text-xs text-gray-500">Shops Ordered</div>
+              <div className="text-xs text-gray-500">{t('shopsOrdered')}</div>
               <div className="text-xl font-bold text-gray-800">{orderedCount}</div>
             </div>
           </div>
@@ -465,15 +468,15 @@ const SalesPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm p-4 mb-6 flex items-center gap-3">
           <CreditCard className="w-7 h-7 text-blue-600" strokeWidth={2} />
           <div>
-            <div className="text-xs text-gray-500">Total Revenue Generated</div>
+            <div className="text-xs text-gray-500">{t('totalRevenue')}</div>
             <div className="text-2xl font-bold text-gray-800">{formatCurrency(revenue)}</div>
           </div>
         </div>
         {/* Recent Orders */}
         <div className="bg-white rounded-2xl shadow-sm p-4">
-          <h2 className="text-lg font-bold mb-2">Recent Orders</h2>
+          <h2 className="text-lg font-bold mb-2">{t('recentOrders')}</h2>
           <div>
-            {recentOrders.length === 0 && <div className="text-gray-400 py-4 text-center">No orders found.</div>}
+            {recentOrders.length === 0 && <div className="text-gray-400 py-4 text-center">{t('noRecentOrders')}</div>}
             {recentOrders.map((order, idx) => (
               <div key={idx} className="flex items-center justify-between py-3 border-b last:border-b-0">
                 <div>
@@ -482,7 +485,7 @@ const SalesPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-800">{formatCurrency(order.amount)}</span>
-                  <button className="border border-blue-600 text-blue-600 rounded px-3 py-1 text-sm font-medium" onClick={() => handleViewOrder(order)}>View</button>
+                  <button className="border border-blue-600 text-blue-600 rounded px-3 py-1 text-sm font-medium" onClick={() => handleViewOrder(order)}>{t('view')}</button>
                 </div>
               </div>
             ))}
@@ -508,4 +511,4 @@ const SalesPage: React.FC = () => {
   );
 };
 
-export default SalesPage; 
+export default SalesPage;

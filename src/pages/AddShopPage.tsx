@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
 import { ArrowLeft, Camera, Loader2, AlertCircle, Check, X } from 'lucide-react';
 import { uploadShopImage } from '../utils/storage';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ShopFormData {
   name: string;
@@ -20,6 +21,7 @@ interface ShopFormData {
 const AddShopPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
   
   const [formData, setFormData] = useState<ShopFormData>({
     name: '',
@@ -114,12 +116,12 @@ const AddShopPage: React.FC = () => {
     
     // Validate required fields
     if (!formData.name.trim()) {
-      setError('Shop name is required');
+      setError(`${t('shopName')} ${t('required')}`);
       return;
     }
     
     if (!formData.address.trim()) {
-      setError('Shop address is required');
+      setError(`${t('shopAddress')} ${t('required')}`);
       return;
     }
     
@@ -132,7 +134,7 @@ const AddShopPage: React.FC = () => {
       const pointString = userLocation ? `(${userLocation.lng},${userLocation.lat})` : null;
       
       if (!pointString) {
-        setError('Unable to get your location. Please enable location services and try again.');
+        setError(t('locationError'));
         setLoading(false);
         return;
       }
@@ -217,7 +219,7 @@ const AddShopPage: React.FC = () => {
         >
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold">Add New Shop</h1>
+        <h1 className="text-xl font-bold">{t('addNewShop')}</h1>
       </header>
       
       {/* Main Content */}
@@ -234,7 +236,7 @@ const AddShopPage: React.FC = () => {
           {/* Shop Name */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="name">
-              Shop Name <span className="text-red-500">*</span>
+              {t('shopName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -243,7 +245,7 @@ const AddShopPage: React.FC = () => {
               value={formData.name}
               onChange={handleInputChange}
               className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter shop name"
+              placeholder={t('shopName')}
               required
             />
           </div>
@@ -251,7 +253,7 @@ const AddShopPage: React.FC = () => {
           {/* Owner Name */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="owner_name">
-              Owner Name
+              {t('ownerName')}
             </label>
             <input
               type="text"
@@ -260,14 +262,14 @@ const AddShopPage: React.FC = () => {
               value={formData.owner_name}
               onChange={handleInputChange}
               className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter owner name"
+              placeholder={t('ownerName')}
             />
           </div>
           
           {/* Phone Number */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="phone_number">
-              Phone Number
+              {t('phoneNumber')}
             </label>
             <input
               type="tel"
@@ -276,14 +278,14 @@ const AddShopPage: React.FC = () => {
               value={formData.phone_number}
               onChange={handleInputChange}
               className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter phone number"
+              placeholder={t('phoneNumber')}
             />
           </div>
           
           {/* Shop Address */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="address">
-              Shop Address <span className="text-red-500">*</span>
+              {t('shopAddress')} <span className="text-red-500">*</span>
             </label>
             <textarea
               id="address"
@@ -291,7 +293,7 @@ const AddShopPage: React.FC = () => {
               value={formData.address}
               onChange={handleInputChange}
               className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter shop address"
+              placeholder={t('shopAddress')}
               rows={3}
               required
             />
@@ -300,7 +302,7 @@ const AddShopPage: React.FC = () => {
           {/* City Dropdown */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="city">
-              City <span className="text-red-500">*</span>
+              {t('city')} <span className="text-red-500">*</span>
             </label>
             <select
               id="city"
@@ -319,7 +321,7 @@ const AddShopPage: React.FC = () => {
           {/* State Dropdown */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="state">
-              State <span className="text-red-500">*</span>
+              {t('state')} <span className="text-red-500">*</span>
             </label>
             <select
               id="state"
@@ -338,7 +340,7 @@ const AddShopPage: React.FC = () => {
           {/* Country Dropdown */}
           <div>
             <label className="block text-gray-700 font-medium mb-2" htmlFor="country">
-              Country <span className="text-red-500">*</span>
+              {t('country')} <span className="text-red-500">*</span>
             </label>
             <select
               id="country"
@@ -358,19 +360,19 @@ const AddShopPage: React.FC = () => {
           {userLocation ? (
             <div className="bg-green-50 p-2 rounded-lg text-green-700 text-sm flex items-center">
               <Check className="h-4 w-4 mr-1" />
-              Location captured: {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
+              {t('locationCaptured')}: {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
             </div>
           ) : (
             <div className="bg-yellow-50 p-2 rounded-lg text-yellow-700 text-sm flex items-center">
               <AlertCircle className="h-4 w-4 mr-1" />
-              Waiting for location... Please ensure location services are enabled.
+              {t('waitingLocation')}
             </div>
           )}
           
           {/* Capture Shop Photo */}
           <div>
             <p className="block text-gray-700 font-medium mb-2">
-              Capture Shop Photo
+              {t('captureShopPhoto')}
             </p>
             
             {imagePreview ? (
@@ -395,14 +397,14 @@ const AddShopPage: React.FC = () => {
                 className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-3 bg-gray-50"
               >
                 <Camera className="h-10 w-10 mx-auto mb-2 text-gray-400" />
-                <p className="text-gray-500">Take a photo of the shop</p>
+                <p className="text-gray-500">{t('takePhotoShop')}</p>
               </div>
             )}
             
             <div className="flex justify-center">
               <label className="flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-md cursor-pointer transition-colors">
                 <Camera className="h-5 w-5 mr-2" />
-                <span>Capture Photo</span>
+                <span>{t('capturePhoto')}</span>
                 <input 
                   type="file"
                   accept="image/*"
@@ -423,10 +425,10 @@ const AddShopPage: React.FC = () => {
             {loading ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                {uploadProgress > 0 ? `Saving... ${uploadProgress}%` : 'Saving...'}
+                {uploadProgress > 0 ? `${t('save')}... ${uploadProgress}%` : `${t('save')}...`}
               </>
             ) : (
-              'Save'
+              t('save')
             )}
           </button>
         </form>
