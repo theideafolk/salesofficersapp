@@ -15,6 +15,7 @@ interface ProductListProps {
   getSchemeDescription: (product: Product) => string;
   onIncrement: (product: Product) => void;
   onDecrement: (product: Product) => void;
+  onQuantityChange: (product: Product, quantity: number) => void;
   onSchemeChoiceChange: (productId: string, choice: 'freeQuantity' | 'offerProduct' | 'both') => void;
 }
 
@@ -29,6 +30,7 @@ const ProductList: React.FC<ProductListProps> = ({
   getSchemeDescription,
   onIncrement,
   onDecrement,
+  onQuantityChange,
   onSchemeChoiceChange
 }) => {
   const { t } = useLanguage();
@@ -55,6 +57,7 @@ const ProductList: React.FC<ProductListProps> = ({
           schemeDescription={getSchemeDescription(product)}
           onIncrement={onIncrement}
           onDecrement={onDecrement}
+          onQuantityChange={onQuantityChange}
           showSchemeChoice={true}
           schemeChoice={getSchemeChoice(product.product_id)}
           onSchemeChoiceChange={onSchemeChoiceChange}

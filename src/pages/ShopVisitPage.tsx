@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Camera, MapPin, CheckCircle, Loader2, X, AlertCircle, RefreshCw, Clock } from 'lucide-react';
 import { uploadVisitProofImage } from '../utils/storage';
 import { useLanguage } from '../context/LanguageContext';
+import VisitConfirmedModal from '../components/VisitConfirmedModal';
 
 interface Shop {
   shop_id: string;
@@ -192,9 +193,9 @@ const ShopVisitPage: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Check file size (limit to 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image is too large. Maximum size is 5MB.');
+      // Check file size (limit to 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image is too large. Maximum size is 10MB.');
         return;
       }
       
@@ -577,84 +578,15 @@ const ShopVisitPage: React.FC = () => {
       )}
       
       {/* Visit Confirmation Modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md relative shadow-xl border border-green-200">
-            {/* Close button */}
-            <button 
-              onClick={handleReturnToShops}
-              className="absolute top-4 right-4 text-gray-800"
-              aria-label="Close"
-            >
-              <X size={24} />
-            </button>
-            
-            <div className="p-6">
-              {/* Success Icon */}
-              <div className="flex justify-center mb-4">
-                <div className="bg-green-500 rounded-full p-4">
-                  <CheckCircle className="h-8 w-8 text-white" />
-                </div>
-              </div>
-              
-              {/* Title */}
-              <h2 className="text-4xl font-bold text-center mb-2">{t('visitConfirmed')}</h2>
-              
-              {/* Shop Name */}
-              <h3 className="text-2xl font-medium text-center mb-6">{shop?.name}</h3>
-              
-              {/* Location and Time */}
-              <div className="mb-4">
-                <div className="flex items-center mb-2">
-                  <MapPin className="h-6 w-6 mr-2 text-gray-800" />
-                  <span className="text-lg text-gray-800">{t('gpsLocationCaptured')}</span>
-                </div>
-                <div className="flex items-center">
-                  <Clock className="h-6 w-6 mr-2 text-gray-800" />
-                  <span className="text-lg text-gray-800">{visitTime}</span>
-                </div>
-              </div>
-              
-              {/* Image - Updated to better fit the preview box */}
-              {imagePreview && (
-                <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 flex justify-center items-center bg-gray-50">
-                  <div className="w-full h-40 relative">
-                    <img 
-                      src={uploadedImageUrl || imagePreview} 
-                      alt="Visit proof" 
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {/* Proof Status */}
-              <div className="flex items-center mb-6">
-                <div className="bg-green-500 rounded-full p-1 mr-2">
-                  <CheckCircle className="h-5 w-5 text-white" />
-                </div>
-                <span className="text-lg">{t('proofVisitLogged')}</span>
-              </div>
-              
-              {/* Action Button */}
-              <div className="flex flex-row gap-2">
-              <button
-                onClick={handlePlaceOrder}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-lg text-base"
-              >
-                {t('placeOrderBtn')}
-              </button>
-                <button
-                  onClick={handleReturnToShops}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded-lg text-base"
-                >
-                  {t('entryDenied')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <VisitConfirmedModal
+        open={showConfirmation}
+        shopName={shop?.name || ''}
+        imageUrl={uploadedImageUrl || imagePreview}
+        visitTime={visitTime}
+        onPlaceOrder={handlePlaceOrder}
+        onEntryDenied={handleReturnToShops}
+        onClose={handleReturnToShops}
+      />
     </div>
   );
 };

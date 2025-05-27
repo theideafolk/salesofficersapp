@@ -1,5 +1,5 @@
 // Individual product item component for the order page
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Minus, Tag, Gift } from 'lucide-react';
 import { Product } from '../../types/products';
 
@@ -13,6 +13,7 @@ interface ProductItemProps {
   schemeDescription: string;
   onIncrement: (product: Product) => void;
   onDecrement: (product: Product) => void;
+  onQuantityChange?: (product: Product, quantity: number) => void;
   isMinimal?: boolean;
   showSchemeChoice?: boolean;
   schemeChoice?: 'freeQuantity' | 'offerProduct' | 'both';
@@ -32,11 +33,14 @@ const ProductItem: React.FC<ProductItemProps> = ({
   schemeDescription,
   onIncrement,
   onDecrement,
+  onQuantityChange,
   isMinimal = false,
   showSchemeChoice = false,
   schemeChoice = 'freeQuantity',
   onSchemeChoiceChange
 }) => {
+  const [inputValue, setInputValue] = useState(quantity.toString());
+
   // Format currency with two decimal places
   const formatCurrency = (amount: number): string => {
     return `₹${amount.toFixed(2)}`;
@@ -45,6 +49,27 @@ const ProductItem: React.FC<ProductItemProps> = ({
   const meetsSchemeRequirement = 
     hasScheme && 
     quantity >= (product.product_scheme_buy_qty || 0);
+
+  // Handle direct quantity input (live update)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty string for editing
+    if (/^\d*$/.test(value)) {
+      setInputValue(value);
+      const numValue = parseInt(value, 10);
+      if (!isNaN(numValue) && numValue >= 0) {
+        onQuantityChange?.(product, numValue);
+      } else if (value === '') {
+        // If empty, treat as 0 for order state
+        onQuantityChange?.(product, 0);
+      }
+    }
+  };
+
+  // Update input value when quantity prop changes
+  React.useEffect(() => {
+    setInputValue(quantity.toString());
+  }, [quantity]);
 
   return (
     <div className={isMinimal ? "border rounded-lg p-3 relative min-w-[180px] max-w-[200px]" : "border-b pb-4"}>
@@ -119,7 +144,14 @@ const ProductItem: React.FC<ProductItemProps> = ({
             >
               <Minus size={18} />
             </button>
-            <span className="font-medium px-3">{quantity}</span>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              className="w-12 text-center font-medium px-1 bg-transparent focus:outline-none"
+              inputMode="numeric"
+              pattern="[0-9]*"
+            />
             <button 
               onClick={() => onIncrement(product)} 
               className="h-8 w-8 flex items-center justify-center"
