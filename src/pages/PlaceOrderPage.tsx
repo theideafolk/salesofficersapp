@@ -107,7 +107,6 @@ const PlaceOrderPage: React.FC = () => {
   // Handle product selection from suggestions
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
-    setSearchTerm('');
   };
 
   // Handle clear search

@@ -62,6 +62,8 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       onSelectProduct(product);
     }
     setShowSuggestions(false);
+    // Set search term to product name instead of clearing it
+    onSearch({ target: { value: product.name } } as React.ChangeEvent<HTMLInputElement>);
   };
 
   // Handle input change
@@ -100,21 +102,6 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
           </button>
         )}
       </div>
-      
-      {/* Selected Product Tag */}
-      {selectedProduct && (
-        <div className="mt-2 flex items-center space-x-2">
-          <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-            <span>{selectedProduct.name}</span>
-            <button
-              onClick={handleClearSearch}
-              className="ml-2 text-blue-600 hover:text-blue-800"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
       
       {/* Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && (
