@@ -50,7 +50,8 @@
   "edit": "EDIT",
   "onBreakOrdersMessage": "You are currently on break. New Orders feature is disabled",
   
-  "salesTitle": "My Sales",
+  "salesTitle": "{name}'s Sales",
+  "salesNavTitle": "My Sales",
   "today": "Today",
   "thisWeek": "This Week",
   "thisMonth": "This Month",
@@ -102,13 +103,14 @@
   "entryDenied": "Entry Denied",
 
   "editOrder": "Edit Order",
+  "allProducts": "All Products",
   "popularProducts": "Popular Products",
   "addMoreProducts": "Add More Products",
   "noProductsAvailable": "No products available. Please check your connection and try again.",
-  "noProductsFound": "No products found for the selected category or search term.",
+  "noProductsFound": "No Products Found",
   "reviewOrder": "Review Order",
   "updateOrder": "Update Order",
-  "searchProduct": "Search product name or code",
+  "searchProduct": "Search products...",
 
   "cartSummary": "Cart Summary",
   "cartItems": "Cart Items",

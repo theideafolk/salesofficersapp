@@ -32,7 +32,7 @@ const BottomNavigation: React.FC = () => {
     },
     {
       path: '/sales',
-      labelKey: 'salesTitle',
+      labelKey: 'salesNavTitle',
       icon: <DollarSign size={24} />
     },
     {

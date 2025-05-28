@@ -15,8 +15,8 @@ export interface Shop {
   phone_number?: string;
   contact_person?: string;
   distance?: number;
-  last_visit_date?: string;
-  gps_location?: string; // The string should be in format "(lng,lat)"
+  last_visit_date?: string | null;
+  gps_location?: string;
 }
 
 // Cache item interface
@@ -399,7 +399,7 @@ export const useNearbyShops = (
           .from('visits')
           .select('shop_id, visit_time')
           .eq('sales_officer_id', userId)
-          .in('shop_id', allShops.map(shop => shop.shop_id))
+          .in('shop_id', allShops.map((shop: Shop) => shop.shop_id))
           .eq('is_deleted', false)
           .order('visit_time', { ascending: false });
           
@@ -407,18 +407,43 @@ export const useNearbyShops = (
         
         if (!visitError && visitData) {
           // Create a map of shop_id to latest visit date
-          const lastVisitMap = visitData.reduce((map, visit) => {
+          const lastVisitMap = visitData.reduce((map: Record<string, string>, visit) => {
             if (!map[visit.shop_id]) {
               map[visit.shop_id] = visit.visit_time;
             }
             return map;
-          }, {} as Record<string, string>);
+          }, {});
           
-          // Update shops with last visit date
-          processedShops = allShops.map(shop => ({
-            ...shop,
-            last_visit_date: lastVisitMap[shop.shop_id] || null
-          }));
+          // Update shops with last visit date and calculate distance
+          processedShops = allShops.map((shop: Shop) => {
+            let distance = 9999; // Default large distance
+            
+            if (userLocation && shop.gps_location) {
+              try {
+                const coordString = shop.gps_location.toString().replace('(', '').replace(')', '');
+                const [longitude, latitude] = coordString.split(',').map(parseFloat);
+                
+                // Calculate distance using Haversine formula
+                distance = calculateDistance(
+                  userLocation.lat,
+                  userLocation.lng,
+                  latitude,
+                  longitude
+                );
+              } catch (e) {
+                console.error('Error calculating distance:', e);
+              }
+            }
+            
+            return {
+              ...shop,
+              last_visit_date: lastVisitMap[shop.shop_id] || null,
+              distance
+            };
+          });
+          
+          // Sort shops by distance
+          processedShops.sort((a: Shop, b: Shop) => (a.distance || 9999) - (b.distance || 9999));
         }
         
         setSearchResults(processedShops);
@@ -438,7 +463,7 @@ export const useNearbyShops = (
     } finally {
       setSearchLoading(false);
     }
-  }, [userId, saveToCache]);
+  }, [userId, saveToCache, userLocation, calculateDistance]);
 
   // Filter nearby shops based on search term if search is not active
   const filteredNearbyShops = searchTerm.length < 2

@@ -9,7 +9,7 @@ const STORAGE_CACHE_KEY = 'storage_bucket_cache';
 
 // Image compression options
 const compressionOptions = {
-  maxSizeMB: 1,           // Max file size in MB (default = 1MB)
+  maxSizeMB: 5,           // Max file size in MB (target = 5MB to match bucket limit)
   maxWidthOrHeight: 1920, // Resize to max width/height if needed
   useWebWorker: true,     // Use WebWorker for better performance
   fileType: 'image/jpeg', // Convert to JPEG format for better compression

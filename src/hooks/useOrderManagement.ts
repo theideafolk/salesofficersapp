@@ -7,7 +7,7 @@ export const useOrderManagement = (shopId: string) => {
   // State variables
   const [products, setProducts] = useState<Product[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [categories, setCategories] = useState<string[]>(['Popular']);
+  const [categories, setCategories] = useState<string[]>(['All Products']);
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [lastOrders, setLastOrders] = useState<Record<string, number>>({});
   const [schemeChoices, setSchemeChoices] = useState<SchemeChoice[]>([]);
@@ -353,6 +353,50 @@ export const useOrderManagement = (shopId: string) => {
     }
   }, [orderItems, updateOrderWithOffers]);
 
+  // Handle direct quantity change
+  const handleQuantityChange = useCallback((product: Product, newQuantity: number) => {
+    if (newQuantity < 0) return; // Don't allow negative quantities
+    
+    const existingItem = orderItems.find(item => item.product_id === product.product_id && !item.is_free);
+    
+    if (existingItem) {
+      if (newQuantity === 0) {
+        // Remove item if quantity becomes zero
+        const updatedOrderItems = orderItems.filter(item => !(item.product_id === product.product_id && !item.is_free));
+        updateOrderWithOffers(updatedOrderItems);
+      } else {
+        // Update quantity
+        const updatedOrderItems = orderItems.map(item => 
+          (item.product_id === product.product_id && !item.is_free)
+            ? { 
+                ...item, 
+                quantity: newQuantity, 
+                amount: newQuantity * item.unit_price 
+              } 
+            : item
+        );
+        updateOrderWithOffers(updatedOrderItems);
+      }
+    } else if (newQuantity > 0) {
+      // Add new item
+      const newOrderItems = [
+        ...orderItems.filter(item => !item.is_free), // Keep only non-free items
+        {
+          product_id: product.product_id,
+          name: product.name,
+          category: product.category,
+          quantity: newQuantity,
+          unit_price: product.ptr || product.mrp, // Use PTR if available, otherwise fallback to MRP
+          amount: newQuantity * (product.ptr || product.mrp),
+          unit_of_measure: product.unit_of_measure
+        }
+      ];
+      
+      // Apply offers
+      updateOrderWithOffers(newOrderItems);
+    }
+  }, [orderItems, updateOrderWithOffers]);
+
   // Initialize state from location if passed
   useEffect(() => {
     // Check if we have previous order items in location state
@@ -421,7 +465,7 @@ export const useOrderManagement = (shopId: string) => {
           
           // Extract unique categories from products
           const uniqueCategories = [...new Set(data.map(product => product.category))].filter(Boolean);
-          setCategories(['Popular', ...uniqueCategories]);
+          setCategories(['All Products', ...uniqueCategories]);
         } else {
           setProducts([]);
         }
@@ -479,7 +523,7 @@ export const useOrderManagement = (shopId: string) => {
 
   // Calculate total items and value
   const regularItemsCount = orderItems.filter(item => !item.is_free);
-  const totalItems = regularItemsCount.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = regularItemsCount.length;
   const totalValue = regularItemsCount.reduce((sum, item) => sum + item.amount, 0);
   
   // Check if there are free items
@@ -506,6 +550,7 @@ export const useOrderManagement = (shopId: string) => {
     getOfferProductCount,
     incrementQuantity,
     decrementQuantity,
+    handleQuantityChange,
     orderQualifiesForOrderScheme,
     getOrderSchemeMinPrice,
     hasFreeItems,

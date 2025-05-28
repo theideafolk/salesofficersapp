@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatLastVisitDate } from '../../utils/shopHelpers';
-import { MapPin, Plus, History } from 'lucide-react';
+import { MapPin, Plus, History, Building2, User, Phone } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface Shop {
@@ -119,33 +119,35 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                     <p className="text-gray-600">Visited at {shop.visit_time}</p>
                   </div>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => onNewOrder ? onNewOrder(shop.shop_id, shop.shop_name) : onSelectShop(shop.shop_id, shop.shop_name)}
-                      className={`${
-                        canPlaceOrder 
-                          ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                          : 'bg-blue-300 text-white cursor-not-allowed'
-                      } font-medium py-3 px-4 rounded-lg`}
-                      aria-label="New Order"
-                      disabled={!canPlaceOrder}
-                    >
-                      <Plus size={20} />
-                    </button>
-                    <button
-                      onClick={() => onViewHistory ? onViewHistory(shop.shop_id, shop.shop_name) : onSelectShop(shop.shop_id, shop.shop_name)}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg"
-                      aria-label="Order History"
-                    >
-                      <History size={20} />
-                    </button>
+                    {onNewOrder && (
+                      <button
+                        onClick={() => onNewOrder(shop.shop_id, shop.shop_name)}
+                        className={`px-4 py-2 rounded-lg ${
+                          canPlaceOrder
+                            ? 'bg-blue-500 text-white hover:bg-blue-600'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                        disabled={!canPlaceOrder}
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    )}
+                    {onViewHistory && (
+                      <button
+                        onClick={() => onViewHistory(shop.shop_id, shop.shop_name)}
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      >
+                        <History className="h-5 w-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            {t('noOrdersFound')}
+          <div className="text-center py-6 text-gray-500">
+            {t('noVisitedShops')}
           </div>
         )
       ) : (
@@ -161,7 +163,27 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold">{shop.name}</h3>
-                    <div className="flex items-center text-gray-600">
+                    <div className="text-gray-600 mt-1">
+                      {shop.address && (
+                        <div className="flex items-start">
+                          <Building2 className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                          <span>{shop.address}</span>
+                        </div>
+                      )}
+                      {shop.owner_name && (
+                        <div className="flex items-start mt-1">
+                          <User className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                          <span>{shop.owner_name}</span>
+                        </div>
+                      )}
+                      {shop.phone_number && (
+                        <div className="flex items-start mt-1">
+                          <Phone className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                          <span>{shop.phone_number}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center text-gray-600 mt-2">
                       <MapPin className="h-4 w-4 mr-1" />
                       <span>{shop.distance?.toFixed(1)} km away</span>
                     </div>
@@ -172,32 +194,34 @@ const ShopSelector: React.FC<ShopSelectorProps> = ({
                     )}
                   </div>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => onNewOrder ? onNewOrder(shop.shop_id, shop.name) : onSelectShop(shop.shop_id, shop.name)}
-                      className={`${
-                        canPlaceOrder 
-                          ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      } font-medium py-3 px-4 rounded-lg`}
-                      aria-label="New Order"
-                      disabled={!canPlaceOrder}
-                    >
-                      <Plus size={20} />
-                    </button>
-                    <button
-                      onClick={() => onViewHistory ? onViewHistory(shop.shop_id, shop.name) : onSelectShop(shop.shop_id, shop.name)}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg"
-                      aria-label="Order History"
-                    >
-                      <History size={20} />
-                    </button>
+                    {onNewOrder && (
+                      <button
+                        onClick={() => onNewOrder(shop.shop_id, shop.name)}
+                        className={`px-4 py-2 rounded-lg ${
+                          canPlaceOrder
+                            ? 'bg-blue-500 text-white hover:bg-blue-600'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                        disabled={!canPlaceOrder}
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    )}
+                    {onViewHistory && (
+                      <button
+                        onClick={() => onViewHistory(shop.shop_id, shop.name)}
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      >
+                        <History className="h-5 w-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-6 text-gray-500">
             {t('noNearbyShops')}
           </div>
         )

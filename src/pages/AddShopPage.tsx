@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import BottomNavigation from '../components/BottomNavigation';
-import { ArrowLeft, Camera, Loader2, AlertCircle, Check, X } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, AlertCircle, Check, X, CheckCircle, Clock, RefreshCw, MapPin } from 'lucide-react';
 import { uploadShopImage } from '../utils/storage';
 import { useLanguage } from '../context/LanguageContext';
+import VisitConfirmedModal from '../components/VisitConfirmedModal';
 
 interface ShopFormData {
   name: string;
@@ -16,6 +17,7 @@ interface ShopFormData {
   city: string;
   state: string;
   country: string;
+  notes: string;
 }
 
 const AddShopPage: React.FC = () => {
@@ -30,7 +32,8 @@ const AddShopPage: React.FC = () => {
     address: '',
     city: 'Mumbai',
     state: 'Maharashtra',
-    country: 'India'
+    country: 'India',
+    notes: ''
   });
   
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -40,6 +43,9 @@ const AddShopPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [enlargedImage, setEnlargedImage] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [visitTime, setVisitTime] = useState<string>('');
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   
   // Available options for dropdowns
   const cities = ['Mumbai', 'Pune', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata'];
@@ -74,9 +80,9 @@ const AddShopPage: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Check file size (limit to 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image is too large. Maximum size is 5MB.');
+      // Check file size (limit to 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image is too large. Maximum size is 10MB.');
         return;
       }
       
@@ -165,6 +171,7 @@ const AddShopPage: React.FC = () => {
       }
       
       // If we have an image file, upload it
+      let proofImageUrl = null;
       if (imageFile && shopResult?.shop_id) {
         try {
           // Upload the image using our utility function
@@ -180,6 +187,8 @@ const AddShopPage: React.FC = () => {
               .from('shops')
               .update({ photo: imageUrl })
               .eq('shop_id', shopResult.shop_id);
+            proofImageUrl = imageUrl;
+            setUploadedImageUrl(imageUrl);
           }
         } catch (uploadErr) {
           console.error('Error uploading image:', uploadErr);
@@ -187,17 +196,27 @@ const AddShopPage: React.FC = () => {
         }
       }
       
-      // Navigate back to shops list with success message
-      navigate('/shops', { 
-        state: { 
-          success: true, 
-          message: 'Shop created successfully' 
-        } 
-      });
+      // Insert into visits table
+      const visitRecord = {
+        sales_officer_id: user?.id,
+        shop_id: shopResult.shop_id,
+        gps_location: pointString,
+        proof_image: proofImageUrl,
+        notes: formData.notes || null,
+        proof_status_confirmed: !!proofImageUrl
+      };
+      const { error: visitError } = await supabase
+        .from('visits')
+        .insert([visitRecord]);
+      if (visitError) throw new Error(`Failed to create visit: ${visitError.message}`);
+      
+      // Set visit time for confirmation modal
+      setVisitTime(new Date().toLocaleString());
+      setShowConfirmation(true);
       
     } catch (err) {
-      console.error('Error creating shop:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create shop');
+      console.error('Error creating shop/visit:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create shop/visit');
     } finally {
       setLoading(false);
     }
@@ -247,38 +266,6 @@ const AddShopPage: React.FC = () => {
               className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder={t('shopName')}
               required
-            />
-          </div>
-          
-          {/* Owner Name */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2" htmlFor="owner_name">
-              {t('ownerName')}
-            </label>
-            <input
-              type="text"
-              id="owner_name"
-              name="owner_name"
-              value={formData.owner_name}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={t('ownerName')}
-            />
-          </div>
-          
-          {/* Phone Number */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2" htmlFor="phone_number">
-              {t('phoneNumber')}
-            </label>
-            <input
-              type="tel"
-              id="phone_number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={t('phoneNumber')}
             />
           </div>
           
@@ -356,6 +343,54 @@ const AddShopPage: React.FC = () => {
             </select>
           </div>
           
+          {/* Owner Name */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2" htmlFor="owner_name">
+              {t('ownerName')}
+            </label>
+            <input
+              type="text"
+              id="owner_name"
+              name="owner_name"
+              value={formData.owner_name}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t('ownerName')}
+            />
+          </div>
+          
+          {/* Phone Number */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2" htmlFor="phone_number">
+              {t('phoneNumber')}
+            </label>
+            <input
+              type="tel"
+              id="phone_number"
+              name="phone_number"
+              value={formData.phone_number}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t('phoneNumber')}
+            />
+          </div>
+          
+          {/* Visit Notes */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2" htmlFor="notes">
+              Notes (Optional)
+            </label>
+            <textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 text-gray-700 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-gray-400"
+              placeholder="Notes (Optional)"
+              rows={3}
+            />
+          </div>
+          
           {/* Location Status */}
           {userLocation ? (
             <div className="bg-green-50 p-2 rounded-lg text-green-700 text-sm flex items-center">
@@ -425,10 +460,10 @@ const AddShopPage: React.FC = () => {
             {loading ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                {uploadProgress > 0 ? `${t('save')}... ${uploadProgress}%` : `${t('save')}...`}
+                {uploadProgress > 0 ? `Save & Visit Shop... ${uploadProgress}%` : `Save & Visit Shop...`}
               </>
             ) : (
-              t('save')
+              'Save & Visit Shop'
             )}
           </button>
         </form>
@@ -454,6 +489,21 @@ const AddShopPage: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Visit Confirmation Modal */}
+      <VisitConfirmedModal
+        open={showConfirmation}
+        shopName={formData.name}
+        imageUrl={uploadedImageUrl || imagePreview}
+        visitTime={visitTime}
+        onPlaceOrder={() => {
+          // Navigate to place order page for the new shop
+          // You may want to pass the new shop id and visit id if available
+          navigate('/shops'); // Or navigate(`/shops/${newShopId}/order`) if you want
+        }}
+        onEntryDenied={() => navigate('/shops')}
+        onClose={() => navigate('/shops')}
+      />
       
       {/* Bottom Navigation */}
       <BottomNavigation />

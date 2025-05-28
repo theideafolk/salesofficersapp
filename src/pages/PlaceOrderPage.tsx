@@ -30,7 +30,8 @@ const PlaceOrderPage: React.FC = () => {
   
   // State variables
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Popular');
+  const [activeCategory, setActiveCategory] = useState('All Products');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
   // Use custom hook for order management
   const {
@@ -52,6 +53,7 @@ const PlaceOrderPage: React.FC = () => {
     getOfferProductCount,
     incrementQuantity,
     decrementQuantity,
+    handleQuantityChange,
     orderQualifiesForOrderScheme,
     getOrderSchemeMinPrice,
     hasFreeItems,
@@ -96,6 +98,21 @@ const PlaceOrderPage: React.FC = () => {
   // Handle search input
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    // Clear selected product when user starts typing
+    if (selectedProduct) {
+      setSelectedProduct(null);
+    }
+  };
+
+  // Handle product selection from suggestions
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setSelectedProduct(null);
   };
   
   // Handle category selection
@@ -103,7 +120,7 @@ const PlaceOrderPage: React.FC = () => {
     setActiveCategory(category);
   };
 
-  // Filter products based on search and category
+  // Filter products based on search, selected product, and category
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = 
@@ -111,12 +128,16 @@ const PlaceOrderPage: React.FC = () => {
         product.name.toLowerCase().includes(searchTerm.toLowerCase());
         
       const matchesCategory = 
-        activeCategory === 'Popular' || 
+        activeCategory === 'All Products' || 
         product.category === activeCategory;
         
-      return matchesSearch && matchesCategory;
+      const matchesSelectedProduct = 
+        !selectedProduct || 
+        product.product_id === selectedProduct.product_id;
+        
+      return matchesSearch && matchesCategory && matchesSelectedProduct;
     });
-  }, [products, searchTerm, activeCategory]);
+  }, [products, searchTerm, activeCategory, selectedProduct]);
   
   // Get popular products from top ordered products for this shop, or fallback to first 5
   const popularProducts = useMemo(() => {
@@ -196,7 +217,11 @@ const PlaceOrderPage: React.FC = () => {
         <ProductSearch 
           searchTerm={searchTerm}
           onSearch={handleSearch}
+          onSelectProduct={handleSelectProduct}
+          onClearSearch={handleClearSearch}
           placeholder={t('searchProduct')}
+          products={products}
+          selectedProduct={selectedProduct}
         />
         
         {/* Current Order Items (when editing) - Horizontal scroll */}
@@ -319,6 +344,7 @@ const PlaceOrderPage: React.FC = () => {
               getSchemeDescription={getSchemeDescription}
               onIncrement={incrementQuantity}
               onDecrement={decrementQuantity}
+              onQuantityChange={handleQuantityChange}
               onSchemeChoiceChange={handleSchemeChoice}
             />
           </>
