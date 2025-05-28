@@ -104,20 +104,26 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       </div>
       
       {/* Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
+      {showSuggestions && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {suggestions.map((product) => (
-            <div
-              key={product.product_id}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
-              onClick={() => handleSuggestionClick(product)}
-            >
-              <span className="text-gray-900">{product.name}</span>
-              <span className="text-gray-500 text-sm">
-                {product.unit_of_measure}
-              </span>
+          {suggestions.length > 0 ? (
+            suggestions.map((product) => (
+              <div
+                key={product.product_id}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                onClick={() => handleSuggestionClick(product)}
+              >
+                <span className="text-gray-900">{product.name}</span>
+                <span className="text-gray-500 text-sm">
+                  {product.unit_of_measure}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-2 text-gray-500 text-center">
+              {t('noProductsFound')}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

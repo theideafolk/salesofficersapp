@@ -7,7 +7,7 @@ export const useOrderManagement = (shopId: string) => {
   // State variables
   const [products, setProducts] = useState<Product[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [categories, setCategories] = useState<string[]>(['Popular']);
+  const [categories, setCategories] = useState<string[]>(['All Products']);
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [lastOrders, setLastOrders] = useState<Record<string, number>>({});
   const [schemeChoices, setSchemeChoices] = useState<SchemeChoice[]>([]);
@@ -465,7 +465,7 @@ export const useOrderManagement = (shopId: string) => {
           
           // Extract unique categories from products
           const uniqueCategories = [...new Set(data.map(product => product.category))].filter(Boolean);
-          setCategories(['Popular', ...uniqueCategories]);
+          setCategories(['All Products', ...uniqueCategories]);
         } else {
           setProducts([]);
         }

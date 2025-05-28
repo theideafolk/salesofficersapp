@@ -50,7 +50,8 @@
   "edit": "संपादित करें",
   "onBreakOrdersMessage": "आप वर्तमान में ब्रेक पर हैं। नए ऑर्डर्स की सुविधा अक्षम है",
   
-  "salesTitle": "मेरी बिक्री",
+  "salesTitle": "{name} की बिक्री",
+  "salesNavTitle": "मेरी बिक्री",
   "today": "आज",
   "thisWeek": "इस सप्ताह",
   "thisMonth": "इस महीने",
@@ -102,14 +103,15 @@
   "entryDenied": "प्रवेश अस्वीकृत",
 
   "editOrder": "ऑर्डर संपादित करें",
+  "allProducts": "सभी उत्पाद",
   "popularProducts": "लोकप्रिय प्रोडक्ट्स",
   "addMoreProducts": "और प्रोडक्ट्स जोड़ें",
   "noProductsAvailable": "कोई प्रोडक्ट्स उपलब्ध नहीं। कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।",
-  "noProductsFound": "चयनित श्रेणी या खोज शब्द के लिए कोई प्रोडक्ट्स नहीं मिला।",
+  "noProductsFound": "कोई उत्पाद नहीं मिला",
   "reviewOrder": "ऑर्डर की समीक्षा करें",
   "updateOrder": "ऑर्डर अपडेट करें",
   "cancel": "रद्द करें",
-  "searchProduct": "प्रोडक्ट नाम या कोड खोजें",
+  "searchProduct": "उत्पाद खोजें...",
 
   "cartSummary": "कार्ट सारांश",
   "cartItems": "कार्ट आइटम",

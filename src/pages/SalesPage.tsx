@@ -8,9 +8,18 @@ import SideMenu from '../components/home/SideMenu';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const BAR_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TARGET_SHOPS_PER_DAY = 25;
+
+interface OrderType {
+  order_id: string;
+  date: string;
+  amount: number;
+  status: string;
+  items: any[];
+}
 
 function getStartOfPeriod(period: string) {
   const now = new Date();
@@ -35,6 +44,7 @@ const SalesPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate ? useNavigate() : () => {};
   const { t } = useLanguage(); // Use translation function
+  const username = useUserProfile(user);
   
   const [period, setPeriod] = useState<'Today' | 'This Week' | 'This Month'>('Today');
   const [loading, setLoading] = useState(false);
@@ -56,6 +66,15 @@ const SalesPage: React.FC = () => {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('Today');
+  const [orders, setOrders] = useState<OrderType[]>([]);
+  const [stats, setStats] = useState({
+    totalSales: 0,
+    totalOrders: 0,
+    averageOrderValue: 0,
+    topProducts: [] as { name: string; quantity: number }[]
+  });
 
   React.useEffect(() => {
     if (!user) return;
@@ -386,7 +405,7 @@ const SalesPage: React.FC = () => {
       <header className="flex justify-between items-center py-4 px-4 bg-white shadow-sm relative">
         <img src="/assets/Benzorgo_revised_logo.png" alt="Logo" className="h-12 w-auto absolute left-4 top-1/2 -translate-y-1/2" />
         <div className="flex-1 flex justify-center">
-          <h1 className="text-xl font-bold">{t('salesTitle')}</h1>
+          <h1 className="text-xl font-bold">{t('salesTitle', { name: username })}</h1>
         </div>
       </header>
       <main className="flex-grow p-4 pb-24">

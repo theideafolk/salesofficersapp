@@ -30,7 +30,7 @@ const PlaceOrderPage: React.FC = () => {
   
   // State variables
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Popular');
+  const [activeCategory, setActiveCategory] = useState('All Products');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
   // Use custom hook for order management
@@ -128,7 +128,7 @@ const PlaceOrderPage: React.FC = () => {
         product.name.toLowerCase().includes(searchTerm.toLowerCase());
         
       const matchesCategory = 
-        activeCategory === 'Popular' || 
+        activeCategory === 'All Products' || 
         product.category === activeCategory;
         
       const matchesSelectedProduct = 
