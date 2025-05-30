@@ -133,5 +133,9 @@
   "passwordsDoNotMatch": "Passwords do not match",
   "passwordMinLength": "Password must be at least 6 characters",
   "passwordChangedSuccess": "Password changed successfully!",
-  "updating": "Updating..."
+  "updating": "Updating...",
+
+  "unsavedChanges": "Unsaved Changes",
+  "unsavedChangesMessage": "You have unsaved changes in your order. Are you sure you want to leave? All changes will be lost.",
+  "leave": "Leave"
 }

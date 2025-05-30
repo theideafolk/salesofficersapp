@@ -15,6 +15,42 @@ import useShopTopProducts from '../hooks/useShopTopProducts';
 import { formatCurrency } from '../utils/formatHelpers';
 import { useLanguage } from '../context/LanguageContext';
 
+// Confirmation Dialog Component
+const ConfirmationDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+}> = ({ isOpen, onClose, onConfirm, title, message, confirmText, cancelText }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <h3 className="text-xl font-bold mb-4">{title}</h3>
+        <p className="text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PlaceOrderPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -32,6 +68,8 @@ const PlaceOrderPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All Products');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   
   // Use custom hook for order management
   const {
@@ -84,17 +122,44 @@ const PlaceOrderPage: React.FC = () => {
     }
   }, [savedOrderItems, orderToEdit, isEditing, setOrderItems]);
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    return orderItems.length > 0;
+  }, [orderItems]);
+
+  // Handle navigation with confirmation
+  const handleNavigation = (navigationCallback: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(() => navigationCallback);
+      setShowConfirmDialog(true);
+    } else {
+      navigationCallback();
+    }
+  };
+
+  // Handle bottom navigation attempt
+  const handleBottomNavigationAttempt = (path: string): boolean => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(() => () => navigate(path));
+      setShowConfirmDialog(true);
+      return false;
+    }
+    return true;
+  };
+
   // Handle logout
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    handleNavigation(async () => {
+      await signOut();
+      navigate('/login');
+    });
   };
   
   // Handle back button
   const handleBack = () => {
-    navigate('/shops');
+    handleNavigation(() => navigate('/shops'));
   };
-  
+
   // Handle search input
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -190,6 +255,22 @@ const PlaceOrderPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        onConfirm={() => {
+          setShowConfirmDialog(false);
+          if (pendingNavigation) {
+            pendingNavigation();
+          }
+        }}
+        title={t('unsavedChanges')}
+        message={t('unsavedChangesMessage')}
+        confirmText={t('leave')}
+        cancelText={t('cancel')}
+      />
+
       {/* Header */}
       <header className="flex justify-between items-center p-4 bg-white shadow-sm">
         <button 
@@ -366,7 +447,7 @@ const PlaceOrderPage: React.FC = () => {
       </main>
       
       {/* Bottom Navigation */}
-      <BottomNavigation />
+      <BottomNavigation onNavigationAttempt={handleBottomNavigationAttempt} />
     </div>
   );
 };
